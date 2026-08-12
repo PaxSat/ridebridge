@@ -1,3 +1,4 @@
+import 'schermata_home.dart';
 import 'package:flutter/material.dart';
 
 class SchermataLogin extends StatelessWidget {
@@ -13,13 +14,45 @@ class SchermataLogin extends StatelessWidget {
       ),
 
       body: Center(
-        child: ElevatedButton(
-          onPressed: () {
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
 
-          },
-          child: const Text(
-            "ACCEDI CON GOOGLE",
-          ),
+            const Icon(
+              Icons.motorcycle,
+              size: 100,
+              color: Colors.orange,
+            ),
+
+            const SizedBox(height: 20),
+
+            const Text(
+              "RideBridge",
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 40),
+
+            ElevatedButton(
+              onPressed: () {
+
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SchermataHome(),
+                  ),
+                );
+
+              },
+              child: const Text(
+                "ACCEDI CON GOOGLE",
+              ),
+            ),
+
+          ],
         ),
       ),
     );

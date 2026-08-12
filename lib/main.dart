@@ -1,4 +1,4 @@
-import 'schermate/schermata_home.dart';
+import 'schermate/schermata_login.dart';
 import 'package:flutter/material.dart';
 
 /// Punto di ingresso dell'applicazione.
