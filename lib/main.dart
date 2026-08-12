@@ -24,7 +24,7 @@ class RideBridgeApp extends StatelessWidget {
       theme: ThemeData(colorSchemeSeed: Colors.orange, useMaterial3: true),
 
       // Prima schermata mostrata all'avvio
-      home: const SchermataHome(),
+      home: const SchermataLogin(),
     );
   }
 }
