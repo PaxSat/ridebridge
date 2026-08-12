@@ -7,31 +7,25 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:799919702472:android:4b1f7ac27dc123704700fd",
-        "android_client_info": {
-          "package_name": "com.ridebridge.ridebridge"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDp0VCCtCYGFFlplIiWCy-NmlZlQ3dZv9g"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:799919702472:android:35273e7d17d7ea3b4700fd",
         "android_client_info": {
           "package_name": "it.paxsat.ridebridge"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "799919702472-qrtnqcerj3cr34o7q9t4ukm4ud4sl12s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "it.paxsat.ridebridge",
+            "certificate_hash": "7223b5caead85db8db900effc2ad6499d3fc3dc0"
+          }
+        },
+        {
+          "client_id": "799919702472-k2337qjipc111i7hlamvn19qtg0e9h18.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDp0VCCtCYGFFlplIiWCy-NmlZlQ3dZv9g"
@@ -39,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "799919702472-k2337qjipc111i7hlamvn19qtg0e9h18.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "799919702472-3htl3lmfpfej57m3mdq713926r2k9vqt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.ridebridge"
+              }
+            }
+          ]
         }
       }
     }

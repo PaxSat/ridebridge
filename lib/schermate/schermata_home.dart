@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'schermata_crea_gruppo.dart';
 import 'package:flutter/material.dart';
 
@@ -6,6 +7,8 @@ class SchermataHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final utente=FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(title: const Text("RideBridge")),
       body: Center(
@@ -22,6 +25,10 @@ class SchermataHome extends StatelessWidget {
             ),
 
             const SizedBox(height: 10),
+
+            Text(
+              "Ciao ${utente?.displayName ?? 'Motociclista'}",
+            ),
 
             const Text("Interfono per motociclisti"),
 

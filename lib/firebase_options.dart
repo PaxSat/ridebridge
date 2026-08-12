@@ -55,12 +55,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDp0VCCtCYGFFlplIiWCy-NmlZlQ3dZv9g',
-    appId: '1:799919702472:android:4b1f7ac27dc123704700fd',
+    appId: '1:799919702472:android:35273e7d17d7ea3b4700fd',
     messagingSenderId: '799919702472',
     projectId: 'ridebridge-743c4',
     storageBucket: 'ridebridge-743c4.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyClka-h_2GsCW0Hpn08fMgCU2PUPA5-Who',
     appId: '1:799919702472:ios:e4d6cb331bdcc9e14700fd',

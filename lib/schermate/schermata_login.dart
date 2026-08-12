@@ -1,4 +1,6 @@
-import 'schermata_home.dart';
+import 'package:ridebridge/servizi/servizio_auth.dart';
+import 'package:ridebridge/schermate/schermata_home.dart';
+
 import 'package:flutter/material.dart';
 
 class SchermataLogin extends StatelessWidget {
@@ -37,15 +39,37 @@ class SchermataLogin extends StatelessWidget {
             const SizedBox(height: 40),
 
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
 
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SchermataHome(),
-                  ),
-                );
+                try {
 
+                  final risultato =
+                  await ServizioAuth()
+                      .accediConGoogle();
+
+                  if (risultato != null &&
+                      context.mounted) {
+
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                        const SchermataHome(),
+                      ),
+                    );
+                  }
+                }
+                catch (errore) {
+
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        errore.toString(),
+                      ),
+                    ),
+                  );
+                }
               },
               child: const Text(
                 "ACCEDI CON GOOGLE",
