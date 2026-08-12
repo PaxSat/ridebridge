@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "799919702472",
+    "project_id": "ridebridge-743c4",
+    "storage_bucket": "ridebridge-743c4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:799919702472:android:4b1f7ac27dc123704700fd",
+        "android_client_info": {
+          "package_name": "com.ridebridge.ridebridge"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDp0VCCtCYGFFlplIiWCy-NmlZlQ3dZv9g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:799919702472:android:35273e7d17d7ea3b4700fd",
+        "android_client_info": {
+          "package_name": "it.paxsat.ridebridge"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDp0VCCtCYGFFlplIiWCy-NmlZlQ3dZv9g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
