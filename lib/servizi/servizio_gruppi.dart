@@ -21,8 +21,8 @@ class ServizioGruppi {
     );
   }
 
-  /// Crea un nuovo gruppo su Firestore.
-  Future<void> creaGruppo(String nome, String idCreatore) async {
+  /// Crea un nuovo gruppo su Firestore e restituisce il codice di accesso generato.
+  Future<String> creaGruppo(String nome, String idCreatore) async {
     try {
       final codice = _generaCodice();
       
@@ -34,6 +34,8 @@ class ServizioGruppi {
         'attivo': true,
         'partecipanti': [idCreatore],
       });
+
+      return codice;
     } catch (e) {
       print('Errore durante la creazione del gruppo: $e');
       rethrow;
