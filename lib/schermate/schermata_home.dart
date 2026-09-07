@@ -3,66 +3,14 @@ import 'package:flutter/material.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_auth.dart';
 import '../servizi/servizio_database.dart';
-import '../servizi/servizio_gruppi.dart';
 import 'schermata_login.dart';
 import 'schermata_crea_gruppo.dart';
 import 'schermata_miei_gruppi.dart';
+import 'schermata_entra_gruppo.dart';
 
 /// Schermata principale dell'applicazione dopo il login.
 class SchermataHome extends StatelessWidget {
   const SchermataHome({super.key});
-
-  /// Mostra il dialogo per inserire il codice ed entrare in un gruppo.
-  void _mostraDialogoEntraGruppo(BuildContext context) {
-    final TextEditingController controlloreCodice = TextEditingController();
-    final ServizioGruppi servizioGruppi = ServizioGruppi();
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Entra nel Gruppo"),
-        content: TextField(
-          controller: controlloreCodice,
-          decoration: const InputDecoration(
-            labelText: "Codice Accesso",
-            hintText: "es. AB1234",
-            border: OutlineInputBorder(),
-          ),
-          textCapitalization: TextCapitalization.characters,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("ANNULLA"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final codice = controlloreCodice.text.trim();
-              if (codice.isEmpty || uid == null) return;
-
-              try {
-                await servizioGruppi.entraNelGruppo(codice, uid);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Sei entrato nel gruppo!")),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.toString())),
-                  );
-                }
-              }
-            },
-            child: const Text("ENTRA"),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,7 +120,12 @@ class SchermataHome extends StatelessWidget {
                     icona: Icons.group_add_outlined,
                     etichetta: "ENTRA NEL GRUPPO",
                     colore: Colors.blue,
-                    azione: () => _mostraDialogoEntraGruppo(context),
+                    azione: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SchermataEntraGruppo()),
+                      );
+                    },
                   ),
                   const SizedBox(height: 40),
                   const Divider(),
