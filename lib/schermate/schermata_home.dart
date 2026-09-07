@@ -7,17 +7,23 @@ import 'schermata_login.dart';
 import 'schermata_crea_gruppo.dart';
 import 'schermata_miei_gruppi.dart';
 import 'schermata_entra_gruppo.dart';
+import 'schermata_profilo.dart';
 
 /// Schermata principale dell'applicazione dopo il login.
-class SchermataHome extends StatelessWidget {
+class SchermataHome extends StatefulWidget {
   const SchermataHome({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    final servizioDatabase = ServizioDatabase();
-    final servizioAuth = ServizioAuth();
+  State<SchermataHome> createState() => _SchermataHomeState();
+}
 
+class _SchermataHomeState extends State<SchermataHome> {
+  final _servizioDatabase = ServizioDatabase();
+  final _servizioAuth = ServizioAuth();
+  final _firebaseUser = FirebaseAuth.instance.currentUser;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("RideBridge"),
@@ -27,7 +33,7 @@ class SchermataHome extends StatelessWidget {
             icon: const Icon(Icons.logout),
             tooltip: 'Esci',
             onPressed: () async {
-              await servizioAuth.esci();
+              await _servizioAuth.esci();
               if (context.mounted) {
                 Navigator.pushReplacement(
                   context,
@@ -39,8 +45,8 @@ class SchermataHome extends StatelessWidget {
         ],
       ),
       body: FutureBuilder<Utente?>(
-        future: firebaseUser != null 
-            ? servizioDatabase.leggiUtente(firebaseUser.uid) 
+        future: _firebaseUser != null 
+            ? _servizioDatabase.leggiUtente(_firebaseUser.uid) 
             : Future.value(null),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -52,6 +58,11 @@ class SchermataHome extends StatelessWidget {
           }
 
           final utente = snapshot.data;
+
+          // Determiniamo il nome da visualizzare (Nickname se presente, altrimenti Nome Google)
+          final nomeVisualizzato = utente?.nickname?.isNotEmpty == true 
+              ? utente!.nickname! 
+              : (utente?.nome ?? 'Motociclista');
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -80,7 +91,7 @@ class SchermataHome extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Benvenuto, ${utente?.nome ?? 'Motociclista'}",
+                    "Benvenuto, $nomeVisualizzato",
                     style: const TextStyle(
                       fontSize: 20,
                       color: Colors.blueGrey,
@@ -91,14 +102,34 @@ class SchermataHome extends StatelessWidget {
                   // Azioni Rapide
                   _costruisciBottoneAzione(
                     context: context,
+                    icona: Icons.account_circle_outlined,
+                    etichetta: "IL MIO PROFILO",
+                    colore: Colors.blueGrey,
+                    azione: () async {
+                      if (utente != null) {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SchermataProfilo(utente: utente),
+                          ),
+                        );
+                        // Ricarichiamo i dati al ritorno dal profilo
+                        setState(() {});
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _costruisciBottoneAzione(
+                    context: context,
                     icona: Icons.groups_outlined,
                     etichetta: "I MIEI GRUPPI",
                     colore: Colors.green,
-                    azione: () {
-                      Navigator.push(
+                    azione: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const SchermataMieiGruppi()),
                       );
+                      setState(() {});
                     },
                   ),
                   const SizedBox(height: 16),
@@ -107,11 +138,12 @@ class SchermataHome extends StatelessWidget {
                     icona: Icons.add_circle_outline,
                     etichetta: "CREA GRUPPO",
                     colore: Colors.orange,
-                    azione: () {
-                      Navigator.push(
+                    azione: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const SchermataCreaGruppo()),
                       );
+                      setState(() {});
                     },
                   ),
                   const SizedBox(height: 16),
@@ -120,11 +152,12 @@ class SchermataHome extends StatelessWidget {
                     icona: Icons.group_add_outlined,
                     etichetta: "ENTRA NEL GRUPPO",
                     colore: Colors.blue,
-                    azione: () {
-                      Navigator.push(
+                    azione: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const SchermataEntraGruppo()),
                       );
+                      setState(() {});
                     },
                   ),
                   const SizedBox(height: 40),

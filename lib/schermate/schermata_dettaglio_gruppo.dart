@@ -62,6 +62,17 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
     }
   }
 
+  String _ottieniEmojiRuolo(RuoloGruppo ruolo) {
+    switch (ruolo) {
+      case RuoloGruppo.leader:
+        return "👑";
+      case RuoloGruppo.scopa:
+        return "🏍️";
+      case RuoloGruppo.partecipante:
+        return "👤";
+    }
+  }
+
   Future<void> _esciDalGruppo() async {
     final conferma = await showDialog<bool>(
       context: context,
@@ -211,14 +222,25 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                       future: _servizioDatabase.leggiUtente(p.idUtente),
                       builder: (context, uSnapshot) {
                         final utente = uSnapshot.data;
+                        final nomePartecipante = utente?.nickname?.isNotEmpty == true
+                            ? utente!.nickname!
+                            : (utente?.nome ?? "Caricamento...");
+                        
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: Colors.grey.shade200,
                             backgroundImage: utente?.fotoUrl != null ? NetworkImage(utente!.fotoUrl!) : null,
                             child: utente?.fotoUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
                           ),
-                          title: Text(utente?.nome ?? "Caricamento...", style: const TextStyle(fontWeight: FontWeight.w500)),
-                          subtitle: Text(_formattaRuolo(p.ruolo)),
+                          title: Text(
+                            "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            utente?.moto?.isNotEmpty == true
+                                ? utente!.moto!
+                                : _formattaRuolo(p.ruolo),
+                          ),
                         );
                       },
                     );
