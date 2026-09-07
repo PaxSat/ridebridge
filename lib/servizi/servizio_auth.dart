@@ -8,24 +8,34 @@ import '../modelli/utente.dart';
 class ServizioAuth {
   final ServizioDatabase _servizioDatabase = ServizioDatabase();
 
-  // Configurazione esplicita del Web Client ID per risolvere l'errore ApiException 10 in produzione.
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '799919702472-k2337qjipc111i7hlamvn19qtg0e9h18.apps.googleusercontent.com',
-  );
+  // Web Client ID necessario per risolvere l'errore ApiException 10 in produzione.
+  static const String _webClientId = '799919702472-k2337qjipc111i7hlamvn19qtg0e9h18.apps.googleusercontent.com';
 
   /// Effettua l'accesso tramite Google e sincronizza i dati su Firestore.
   Future<UserCredential?> accediConGoogle() async {
     try {
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      // In google_sign_in 7.2.0, l'inizializzazione tramite singleton è obbligatoria.
+      await GoogleSignIn.instance.initialize(
+        serverClientId: _webClientId,
+      );
+
+      // Il metodo signIn() è stato sostituito da authenticate() per supportare Credential Manager.
+      final GoogleSignInAccount? account = await GoogleSignIn.instance.authenticate();
 
       if (account == null) {
         return null; // L'utente ha annullato il login
       }
 
-      final GoogleSignInAuthentication auth = await account.authentication;
+      // In 7.2.0, l'oggetto authentication è accessibile in modo sincrono e contiene l'idToken.
+      final GoogleSignInAuthentication auth = account.authentication;
+
+      // L'accessToken è stato rimosso da GoogleSignInAuthentication e spostato in authorizationClient.
+      // Viene richiesto qui per completare la credenziale Firebase.
+      final GoogleSignInClientAuthorization authorization = 
+          await account.authorizationClient.authorizeScopes(['email', 'profile']);
 
       final AuthCredential credenziale = GoogleAuthProvider.credential(
-        accessToken: auth.accessToken,
+        accessToken: authorization.accessToken,
         idToken: auth.idToken,
       );
 
@@ -51,19 +61,18 @@ class ServizioAuth {
 
       return userCredential;
     } catch (e, stack) {
-     debugPrint('================================');
-     debugPrint('LOGIN GOOGLE FALLITO');
-     debugPrint(e.toString());
-     debugPrint(stack.toString());
-     debugPrint('================================');
-     rethrow;
-
+      debugPrint('================================');
+      debugPrint('LOGIN GOOGLE FALLITO');
+      debugPrint(e.toString());
+      debugPrint(stack.toString());
+      debugPrint('================================');
+      rethrow;
     }
   }
 
   /// Effettua il logout dell'utente.
   Future<void> esci() async {
-    await _googleSignIn.signOut();
+    await GoogleSignIn.instance.signOut();
     await FirebaseAuth.instance.signOut();
   }
 }
