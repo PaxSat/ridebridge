@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
@@ -115,6 +116,14 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
     }
   }
 
+  /// Condivide il codice di accesso tramite il menu di sistema.
+  void _condividiCodice() {
+    Share.share(
+      "Unisciti al mio gruppo RideBridge!\n\nCodice gruppo: ${widget.gruppo.codiceAccesso}",
+      subject: "Invito Gruppo RideBridge",
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_inCaricamento) {
@@ -149,6 +158,15 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                 SelectableText(
                   widget.gruppo.codiceAccesso,
                   style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: 5, color: Colors.orange),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: _condividiCodice,
+                  icon: const Icon(Icons.share, size: 20),
+                  label: const Text("CONDIVIDI CODICE"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.orange.shade800,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 const Divider(),
