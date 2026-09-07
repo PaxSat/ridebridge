@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "799919702472-8v8pg1loanaefumncnk0tat58ql0pumu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "it.paxsat.ridebridge",
+            "certificate_hash": "96a66fb0ceb71d5c1fe4a3ef078a375d4593891b"
+          }
+        },
+        {
+          "client_id": "799919702472-9kqf5kibtodc2j23bbvgulmkr10bnm6k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "it.paxsat.ridebridge",
+            "certificate_hash": "9dd4e300b99545beadd8b546272ad0884fc021a4"
+          }
+        },
+        {
           "client_id": "799919702472-qrtnqcerj3cr34o7q9t4ukm4ud4sl12s.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

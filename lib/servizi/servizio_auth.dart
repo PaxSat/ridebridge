@@ -45,9 +45,17 @@ class ServizioAuth {
       }
 
       return userCredential;
-    } catch (e) {
-      debugPrint('Errore durante il login Google: $e');
-      rethrow;
+   /// } catch (e) {
+   ///   debugPrint('Errore durante il login Google: $e');
+   ///   rethrow;
+    } catch (e, stack) {
+     debugPrint('================================');
+     debugPrint('LOGIN GOOGLE FALLITO');
+     debugPrint(e.toString());
+     debugPrint(stack.toString());
+     debugPrint('================================');
+     rethrow;
+
     }
   }
 
