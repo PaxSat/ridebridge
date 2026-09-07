@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'servizio_database.dart';
 import '../modelli/utente.dart';
@@ -45,7 +46,7 @@ class ServizioAuth {
 
       return userCredential;
     } catch (e) {
-      print('Errore durante il login Google: $e');
+      debugPrint('Errore durante il login Google: $e');
       rethrow;
     }
   }

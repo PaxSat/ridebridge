@@ -60,7 +60,7 @@ class SchermataHome extends StatelessWidget {
                   const SizedBox(height: 20),
                   CircleAvatar(
                     radius: 60,
-                    backgroundColor: Colors.orange.withOpacity(0.1),
+                    backgroundColor: Colors.orange.withValues(alpha: 0.1),
                     backgroundImage: utente?.fotoUrl != null 
                         ? NetworkImage(utente!.fotoUrl!) 
                         : null,

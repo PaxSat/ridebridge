@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../modelli/utente.dart';
 
 /// Gestisce le operazioni di persistenza su Cloud Firestore.
@@ -16,7 +17,7 @@ class ServizioDatabase {
         SetOptions(merge: true),
       );
     } catch (e) {
-      print('Errore durante il salvataggio utente: $e');
+      debugPrint('Errore durante il salvataggio utente: $e');
       rethrow;
     }
   }
@@ -30,7 +31,7 @@ class ServizioDatabase {
       }
       return null;
     } catch (e) {
-      print('Errore durante la lettura utente: $e');
+      debugPrint('Errore durante la lettura utente: $e');
       rethrow;
     }
   }
@@ -41,7 +42,7 @@ class ServizioDatabase {
       DocumentSnapshot doc = await _utentiRef.doc(idUtente).get();
       return doc.exists;
     } catch (e) {
-      print('Errore verifica esistenza utente: $e');
+      debugPrint('Errore verifica esistenza utente: $e');
       return false;
     }
   }
@@ -54,7 +55,7 @@ class ServizioDatabase {
         'attivo': true,
       });
     } catch (e) {
-      print('Errore aggiornamento ultimo accesso: $e');
+      debugPrint('Errore aggiornamento ultimo accesso: $e');
     }
   }
 }
