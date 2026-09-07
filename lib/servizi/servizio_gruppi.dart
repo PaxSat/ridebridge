@@ -117,8 +117,13 @@ class ServizioGruppi {
   }
 
   /// Rimuove un utente dai partecipanti di un gruppo.
+  /// Il Leader non può uscire senza prima trasferire il comando o eliminare il gruppo.
   Future<void> esciDalGruppo(String idGruppo, String idUtente) async {
     try {
+      if (await _eLeader(idGruppo, idUtente)) {
+        throw Exception('Il Leader non può uscire dal gruppo. Trasferisci il comando o elimina il gruppo.');
+      }
+
       // Rimuove dalla sottocollezione
       await _gruppiRef
           .doc(idGruppo)
@@ -133,6 +138,36 @@ class ServizioGruppi {
     } catch (e) {
       debugPrint('Errore durante l\'uscita dal gruppo: $e');
       rethrow;
+    }
+  }
+
+  /// Recupera la lista di tutti i partecipanti di un gruppo con i relativi ruoli.
+  Future<List<PartecipanteGruppo>> listaPartecipanti(String idGruppo) async {
+    try {
+      final snapshot = await _gruppiRef.doc(idGruppo).collection('partecipanti').get();
+      return snapshot.docs
+          .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      debugPrint('Errore durante il recupero dei partecipanti: $e');
+      rethrow;
+    }
+  }
+
+  /// Recupera il ruolo di un utente specifico in un gruppo.
+  Future<PartecipanteGruppo?> ottieniRuoloUtente(String idGruppo, String idUtente) async {
+    try {
+      final doc = await _gruppiRef
+          .doc(idGruppo)
+          .collection('partecipanti')
+          .doc(idUtente)
+          .get();
+      
+      if (!doc.exists) return null;
+      return PartecipanteGruppo.daMappa(doc.data()!, idUtente);
+    } catch (e) {
+      debugPrint('Errore recupero ruolo utente: $e');
+      return null;
     }
   }
 
