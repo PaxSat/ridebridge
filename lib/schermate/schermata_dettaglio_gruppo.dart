@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
@@ -144,9 +145,24 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
   /// Condivide il codice di accesso tramite il menu di sistema.
   void _condividiCodice() {
     Share.share(
-      "Unisciti al mio gruppo RideBridge!\n\nCodice gruppo: ${widget.gruppo.codiceAccesso}",
+      "${widget.gruppo.codiceAccesso}\n\n"
+      "RideBridge\n"
+      "Codice invito gruppo",
       subject: "Invito Gruppo RideBridge",
     );
+  }
+
+  /// Copia il codice di accesso negli appunti.
+  void _copiaCodice() {
+    Clipboard.setData(ClipboardData(text: widget.gruppo.codiceAccesso));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Codice copiato negli appunti"),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -185,13 +201,23 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                   style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: 5, color: Colors.orange),
                 ),
                 const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: _condividiCodice,
-                  icon: const Icon(Icons.share, size: 20),
-                  label: const Text("CONDIVIDI CODICE"),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.orange.shade800,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _condividiCodice,
+                      icon: const Icon(Icons.share, size: 20),
+                      label: const Text("CONDIVIDI"),
+                      style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
+                    ),
+                    const SizedBox(width: 16),
+                    TextButton.icon(
+                      onPressed: _copiaCodice,
+                      icon: const Icon(Icons.copy, size: 20),
+                      label: const Text("COPIA"),
+                      style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 const Divider(),
