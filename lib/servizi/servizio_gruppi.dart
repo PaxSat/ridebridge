@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
+import '../modelli/stato_audio.dart';
 
 /// Gestisce le operazioni relative ai gruppi su Cloud Firestore.
 class ServizioGruppi {
@@ -42,6 +43,12 @@ class ServizioGruppi {
       final partecipanteLeader = PartecipanteGruppo(
         idUtente: idCreatore,
         ruolo: RuoloGruppo.leader,
+        online: true,
+        ultimoAccesso: DateTime.now(),
+        statoAudio: StatoAudio(
+          ultimoAggiornamento: DateTime.now(),
+          prioritaAudio: true,
+        ),
       );
 
       await docGruppo
@@ -74,7 +81,9 @@ class ServizioGruppi {
       final partecipantiArray = List<String>.from(dati['partecipanti'] ?? []);
 
       if (partecipantiArray.contains(idUtente)) {
-        return; // Utente già presente
+        // Se è già presente, aggiorniamo solo la presenza
+        await aggiornaPresenza(doc.id, idUtente, true);
+        return;
       }
 
       // Aggiorna l'array nel documento principale
@@ -86,6 +95,12 @@ class ServizioGruppi {
       final nuovoPartecipante = PartecipanteGruppo(
         idUtente: idUtente,
         ruolo: RuoloGruppo.partecipante,
+        online: true,
+        ultimoAccesso: DateTime.now(),
+        statoAudio: StatoAudio(
+          ultimoAggiornamento: DateTime.now(),
+          prioritaAudio: false,
+        ),
       );
 
       await _gruppiRef
@@ -212,7 +227,10 @@ class ServizioGruppi {
         .doc(idGruppo)
         .collection('partecipanti')
         .doc(idDestinatario)
-        .update({'ruolo': RuoloGruppo.scopa.name});
+        .update({
+          'ruolo': RuoloGruppo.scopa.name,
+          'statoAudio.prioritaAudio': true,
+        });
   }
 
   /// Rimuove il ruolo di "scopa", riportandolo a partecipante. Solo il leader può farlo.
@@ -224,7 +242,10 @@ class ServizioGruppi {
         .doc(idGruppo)
         .collection('partecipanti')
         .doc(idDestinatario)
-        .update({'ruolo': RuoloGruppo.partecipante.name});
+        .update({
+          'ruolo': RuoloGruppo.partecipante.name,
+          'statoAudio.prioritaAudio': false,
+        });
   }
 
   /// Trasferisce il ruolo di leader a un altro utente.
@@ -238,13 +259,19 @@ class ServizioGruppi {
     // Vecchio leader diventa partecipante
     batch.update(
       _gruppiRef.doc(idGruppo).collection('partecipanti').doc(idLeaderAttuale),
-      {'ruolo': RuoloGruppo.partecipante.name},
+      {
+        'ruolo': RuoloGruppo.partecipante.name,
+        'statoAudio.prioritaAudio': false,
+      },
     );
 
     // Nuovo leader
     batch.update(
       _gruppiRef.doc(idGruppo).collection('partecipanti').doc(idNuovoLeader),
-      {'ruolo': RuoloGruppo.leader.name},
+      {
+        'ruolo': RuoloGruppo.leader.name,
+        'statoAudio.prioritaAudio': true,
+      },
     );
 
     // Aggiorna anche idCreatore nel documento principale per coerenza
@@ -299,5 +326,70 @@ class ServizioGruppi {
         .collection('partecipanti')
         .doc(idPartecipante)
         .update({'audioConsentito': false});
+  }
+
+  // --- LOGICA PRESENZA E STATO AUDIO ---
+
+  /// Aggiorna lo stato di presenza (online/offline) di un partecipante.
+  Future<void> aggiornaPresenza(String idGruppo, String idUtente, bool online) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('partecipanti')
+          .doc(idUtente)
+          .update({
+            'online': online,
+            'ultimoAccesso': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('Errore aggiornamento presenza: $e');
+    }
+  }
+
+  /// Aggiorna lo stato audio in tempo reale.
+  Future<void> aggiornaStatoAudio(String idGruppo, String idUtente, StatoAudio stato) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('partecipanti')
+          .doc(idUtente)
+          .update({
+            'statoAudio': stato.aMappa(),
+          });
+    } catch (e) {
+      debugPrint('Errore aggiornamento stato audio: $e');
+    }
+  }
+
+  /// Attiva lo stato di emergenza per un partecipante.
+  Future<void> attivaEmergenza(String idGruppo, String idUtente) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('partecipanti')
+          .doc(idUtente)
+          .update({
+            'statoAudio.emergenzaAttiva': true,
+            'statoAudio.ultimoAggiornamento': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('Errore attivazione emergenza: $e');
+    }
+  }
+
+  /// Disattiva lo stato di emergenza.
+  Future<void> disattivaEmergenza(String idGruppo, String idUtente) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('partecipanti')
+          .doc(idUtente)
+          .update({
+            'statoAudio.emergenzaAttiva': false,
+            'statoAudio.ultimoAggiornamento': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('Errore disattivazione emergenza: $e');
+    }
   }
 }

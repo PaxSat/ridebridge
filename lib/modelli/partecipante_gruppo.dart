@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'stato_audio.dart';
+
 /// Enum che definisce i ruoli possibili all'interno di un gruppo.
 enum RuoloGruppo {
   leader,
@@ -6,13 +9,16 @@ enum RuoloGruppo {
 }
 
 /// Modello che rappresenta un partecipante all'interno di un gruppo,
-/// con i relativi permessi per il sistema audio e le segnalazioni.
+/// con i relativi permessi per il sistema audio e lo stato in tempo reale.
 class PartecipanteGruppo {
   final String idUtente;
   final RuoloGruppo ruolo;
   final bool microfonoConsentito;
   final bool audioConsentito;
   final bool emergenzaAbilitata;
+  final bool online;
+  final DateTime? ultimoAccesso;
+  final StatoAudio? statoAudio;
 
   PartecipanteGruppo({
     required this.idUtente,
@@ -20,6 +26,9 @@ class PartecipanteGruppo {
     this.microfonoConsentito = true,
     this.audioConsentito = true,
     this.emergenzaAbilitata = true,
+    this.online = false,
+    this.ultimoAccesso,
+    this.statoAudio,
   });
 
   /// Crea un oggetto [PartecipanteGruppo] da una mappa Firestore.
@@ -33,6 +42,11 @@ class PartecipanteGruppo {
       microfonoConsentito: mappa['microfonoConsentito'] ?? true,
       audioConsentito: mappa['audioConsentito'] ?? true,
       emergenzaAbilitata: mappa['emergenzaAbilitata'] ?? true,
+      online: mappa['online'] ?? false,
+      ultimoAccesso: (mappa['ultimoAccesso'] as Timestamp?)?.toDate(),
+      statoAudio: mappa['statoAudio'] != null 
+          ? StatoAudio.daMappa(mappa['statoAudio'] as Map<String, dynamic>) 
+          : null,
     );
   }
 
@@ -43,6 +57,9 @@ class PartecipanteGruppo {
       'microfonoConsentito': microfonoConsentito,
       'audioConsentito': audioConsentito,
       'emergenzaAbilitata': emergenzaAbilitata,
+      'online': online,
+      'ultimoAccesso': ultimoAccesso != null ? Timestamp.fromDate(ultimoAccesso!) : null,
+      'statoAudio': statoAudio?.aMappa(),
     };
   }
 
@@ -52,6 +69,9 @@ class PartecipanteGruppo {
     bool? microfonoConsentito,
     bool? audioConsentito,
     bool? emergenzaAbilitata,
+    bool? online,
+    DateTime? ultimoAccesso,
+    StatoAudio? statoAudio,
   }) {
     return PartecipanteGruppo(
       idUtente: idUtente,
@@ -59,6 +79,9 @@ class PartecipanteGruppo {
       microfonoConsentito: microfonoConsentito ?? this.microfonoConsentito,
       audioConsentito: audioConsentito ?? this.audioConsentito,
       emergenzaAbilitata: emergenzaAbilitata ?? this.emergenzaAbilitata,
+      online: online ?? this.online,
+      ultimoAccesso: ultimoAccesso ?? this.ultimoAccesso,
+      statoAudio: statoAudio ?? this.statoAudio,
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
@@ -29,6 +30,19 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
   void initState() {
     super.initState();
     _caricaDati();
+    // Aggiorniamo la presenza quando entriamo nel dettaglio
+    if (_uid != null) {
+      _servizioGruppi.aggiornaPresenza(widget.gruppo.id, _uid, true);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Aggiorniamo la presenza quando usciamo
+    if (_uid != null) {
+      _servizioGruppi.aggiornaPresenza(widget.gruppo.id, _uid, false);
+    }
+    super.dispose();
   }
 
   Future<void> _caricaDati() async {
@@ -205,8 +219,15 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
           ),
 
           Expanded(
-            child: FutureBuilder<List<PartecipanteGruppo>>(
-              future: _servizioGruppi.listaPartecipanti(widget.gruppo.id),
+            child: StreamBuilder<List<PartecipanteGruppo>>(
+              stream: FirebaseFirestore.instance
+                  .collection('gruppi')
+                  .doc(widget.gruppo.id)
+                  .collection('partecipanti')
+                  .snapshots()
+                  .map((snapshot) => snapshot.docs
+                      .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
+                      .toList()),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -227,20 +248,50 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                             : (utente?.nome ?? "Caricamento...");
                         
                         return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.grey.shade200,
-                            backgroundImage: utente?.fotoUrl != null ? NetworkImage(utente!.fotoUrl!) : null,
-                            child: utente?.fotoUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
+                          leading: Stack(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: Colors.grey.shade200,
+                                backgroundImage: utente?.fotoUrl != null ? NetworkImage(utente!.fotoUrl!) : null,
+                                child: utente?.fotoUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
+                              ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: p.online ? Colors.green : Colors.grey,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           title: Text(
                             "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante",
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Text(
-                            utente?.moto?.isNotEmpty == true
-                                ? utente!.moto!
-                                : _formattaRuolo(p.ruolo),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                utente?.moto?.isNotEmpty == true
+                                    ? utente!.moto!
+                                    : _formattaRuolo(p.ruolo),
+                              ),
+                              if (p.statoAudio?.emergenzaAttiva == true)
+                                const Text(
+                                  "🚨 EMERGENZA ATTIVA",
+                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                            ],
                           ),
+                          trailing: p.online 
+                            ? const Text("🟢 online", style: TextStyle(fontSize: 10, color: Colors.green))
+                            : const Text("⚫ offline", style: TextStyle(fontSize: 10, color: Colors.grey)),
                         );
                       },
                     );
