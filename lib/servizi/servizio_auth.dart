@@ -36,17 +36,25 @@ class ServizioAuth {
       final User? firebaseUser = userCredential.user;
 
       if (firebaseUser != null) {
-        // Creazione o aggiornamento del profilo utente su Firestore
-        final Utente utente = Utente(
-          id: firebaseUser.uid,
-          nome: firebaseUser.displayName ?? 'Motociclista',
-          email: firebaseUser.email ?? '',
-          fotoUrl: firebaseUser.photoURL,
-          ultimoAccesso: DateTime.now(),
-          attivo: true,
-        );
+        // Verifica se l'utente esiste già per evitare di sovrascrivere nickname e moto
+        final bool esiste = await _servizioDatabase.esisteUtente(firebaseUser.uid);
 
-        await _servizioDatabase.salvaUtente(utente);
+        if (esiste) {
+          // Se esiste, aggiorniamo solo l'accesso e lo stato attivo
+          await _servizioDatabase.aggiornaUltimoAccesso(firebaseUser.uid);
+        } else {
+          // Se è un nuovo utente, creiamo il profilo base
+          final Utente utente = Utente(
+            id: firebaseUser.uid,
+            nome: firebaseUser.displayName ?? 'Motociclista',
+            email: firebaseUser.email ?? '',
+            fotoUrl: firebaseUser.photoURL,
+            ultimoAccesso: DateTime.now(),
+            attivo: true,
+            dataRegistrazione: DateTime.now(),
+          );
+          await _servizioDatabase.salvaUtente(utente);
+        }
       }
 
       return userCredential;

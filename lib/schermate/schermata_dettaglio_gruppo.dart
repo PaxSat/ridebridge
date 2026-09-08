@@ -234,11 +234,20 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                 }
                 final partecipanti = snapshot.data ?? [];
                 
+                // Determiniamo il ruolo attuale dell'utente dal flusso real-time
+                final partecipanteCorrente = partecipanti.firstWhere(
+                  (p) => p.idUtente == _uid,
+                  orElse: () => mioRuolo, // fallback al valore iniziale
+                );
+                final bool eLeaderCorrente = partecipanteCorrente.ruolo == RuoloGruppo.leader;
+
                 return ListView.separated(
                   itemCount: partecipanti.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final p = partecipanti[index];
+                    final bool eMeStesso = p.idUtente == _uid;
+
                     return FutureBuilder<Utente?>(
                       future: _servizioDatabase.leggiUtente(p.idUtente),
                       builder: (context, uSnapshot) {
@@ -270,9 +279,18 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                               ),
                             ],
                           ),
-                          title: Text(
-                            "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          title: Row(
+                            children: [
+                              Text(
+                                "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante",
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              if (p.statoAudio?.staParlando == true)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 8.0),
+                                  child: Icon(Icons.mic, color: Colors.green, size: 16),
+                                ),
+                            ],
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,16 +300,98 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                                     ? utente!.moto!
                                     : _formattaRuolo(p.ruolo),
                               ),
-                              if (p.statoAudio?.emergenzaAttiva == true)
-                                const Text(
-                                  "🚨 EMERGENZA ATTIVA",
-                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                              Row(
+                                children: [
+                                  if (!p.microfonoConsentito)
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: 8.0),
+                                      child: Icon(Icons.mic_off, color: Colors.red, size: 14),
+                                    ),
+                                  if (!p.audioConsentito)
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: 8.0),
+                                      child: Icon(Icons.volume_off, color: Colors.red, size: 14),
+                                    ),
+                                  if (p.statoAudio?.emergenzaAttiva == true)
+                                    const Text(
+                                      "🚨 EMERGENZA",
+                                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              p.online 
+                                ? const Text("🟢", style: TextStyle(fontSize: 10))
+                                : const Text("⚫", style: TextStyle(fontSize: 10)),
+                              if (eLeaderCorrente && !eMeStesso)
+                                PopupMenuButton<String>(
+                                  onSelected: (valore) async {
+                                    try {
+                                      if (valore == 'scopa') {
+                                        if (p.ruolo == RuoloGruppo.scopa) {
+                                          await _servizioGruppi.rimuoviScopa(widget.gruppo.id, _uid!, p.idUtente);
+                                        } else {
+                                          await _servizioGruppi.assegnaScopa(widget.gruppo.id, _uid!, p.idUtente);
+                                        }
+                                      } else if (valore == 'leader') {
+                                        final conferma = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text("Trasferisci Comando"),
+                                            content: Text("Vuoi davvero nominare $nomePartecipante nuovo Leader?"),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("ANNULLA")),
+                                              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("CONFERMA")),
+                                            ],
+                                          ),
+                                        );
+                                        if (conferma == true) {
+                                          await _servizioGruppi.cambiaLeader(widget.gruppo.id, _uid!, p.idUtente);
+                                        }
+                                      } else if (valore == 'mic') {
+                                        if (p.microfonoConsentito) {
+                                          await _servizioGruppi.disabilitaMicrofonoPartecipante(widget.gruppo.id, _uid!, p.idUtente);
+                                        } else {
+                                          await _servizioGruppi.abilitaMicrofonoPartecipante(widget.gruppo.id, _uid!, p.idUtente);
+                                        }
+                                      } else if (valore == 'audio') {
+                                        if (p.audioConsentito) {
+                                          await _servizioGruppi.disabilitaAudioPartecipante(widget.gruppo.id, _uid!, p.idUtente);
+                                        } else {
+                                          await _servizioGruppi.abilitaAudioPartecipante(widget.gruppo.id, _uid!, p.idUtente);
+                                        }
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                                      }
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(
+                                      value: 'scopa',
+                                      child: Text(p.ruolo == RuoloGruppo.scopa ? "Rimuovi Scopa" : "Nomina Scopa"),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'mic',
+                                      child: Text(p.microfonoConsentito ? "Disabilita Microfono" : "Abilita Microfono"),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'audio',
+                                      child: Text(p.audioConsentito ? "Disabilita Audio" : "Abilita Audio"),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'leader',
+                                      child: Text("Promuovi a Leader"),
+                                    ),
+                                  ],
                                 ),
                             ],
                           ),
-                          trailing: p.online 
-                            ? const Text("🟢 online", style: TextStyle(fontSize: 10, color: Colors.green))
-                            : const Text("⚫ offline", style: TextStyle(fontSize: 10, color: Colors.grey)),
                         );
                       },
                     );
