@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "799919702472-j2ovifod23m2kh4a5stijp54jbl637qr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "it.paxsat.ridebridge",
+            "certificate_hash": "cf0855d5140bc3f0eec00fd27d8824ae6e6155d8"
+          }
+        },
+        {
           "client_id": "799919702472-qrtnqcerj3cr34o7q9t4ukm4ud4sl12s.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
