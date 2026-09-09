@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'configurazione_gruppo.dart';
 
 /// Modello che rappresenta un gruppo di motociclisti.
 class Gruppo {
@@ -8,6 +9,7 @@ class Gruppo {
   final String idCreatore;
   final DateTime dataCreazione;
   final bool attivo;
+  final ConfigurazioneGruppo configurazione;
 
   Gruppo({
     required this.id,
@@ -16,7 +18,8 @@ class Gruppo {
     required this.idCreatore,
     required this.dataCreazione,
     this.attivo = true,
-  });
+    ConfigurazioneGruppo? configurazione,
+  }) : configurazione = configurazione ?? ConfigurazioneGruppo();
 
   /// Crea un oggetto [Gruppo] da una mappa Firestore.
   factory Gruppo.daMappa(Map<String, dynamic> mappa, String documentoId) {
@@ -27,6 +30,9 @@ class Gruppo {
       idCreatore: mappa['idCreatore'] ?? '',
       dataCreazione: (mappa['dataCreazione'] as Timestamp?)?.toDate() ?? DateTime.now(),
       attivo: mappa['attivo'] ?? true,
+      configurazione: mappa['configurazione'] != null
+          ? ConfigurazioneGruppo.daMappa(mappa['configurazione'] as Map<String, dynamic>)
+          : ConfigurazioneGruppo(),
     );
   }
 
@@ -38,6 +44,7 @@ class Gruppo {
       'idCreatore': idCreatore,
       'dataCreazione': Timestamp.fromDate(dataCreazione),
       'attivo': attivo,
+      'configurazione': configurazione.aMappa(),
     };
   }
 
@@ -48,6 +55,7 @@ class Gruppo {
     String? idCreatore,
     DateTime? dataCreazione,
     bool? attivo,
+    ConfigurazioneGruppo? configurazione,
   }) {
     return Gruppo(
       id: id,
@@ -56,6 +64,7 @@ class Gruppo {
       idCreatore: idCreatore ?? this.idCreatore,
       dataCreazione: dataCreazione ?? this.dataCreazione,
       attivo: attivo ?? this.attivo,
+      configurazione: configurazione ?? this.configurazione,
     );
   }
 }

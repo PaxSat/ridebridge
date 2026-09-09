@@ -6,6 +6,8 @@ import '../modelli/partecipante_gruppo.dart';
 import '../modelli/stato_audio.dart';
 import '../modelli/posizione_gps.dart';
 
+import '../modelli/configurazione_gruppo.dart';
+
 /// Gestisce le operazioni relative ai gruppi su Cloud Firestore.
 class ServizioGruppi {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -406,6 +408,18 @@ class ServizioGruppi {
           });
     } catch (e) {
       debugPrint('Errore aggiornamento posizione GPS: $e');
+    }
+  }
+
+  /// Salva la configurazione tecnica del gruppo.
+  Future<void> salvaConfigurazione(String idGruppo, ConfigurazioneGruppo config) async {
+    try {
+      await _gruppiRef.doc(idGruppo).update({
+        'configurazione': config.aMappa(),
+      });
+    } catch (e) {
+      debugPrint('Errore salvataggio configurazione: $e');
+      rethrow;
     }
   }
 }

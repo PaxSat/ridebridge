@@ -4,6 +4,7 @@ import '../modelli/gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
 import 'schermata_dettaglio_gruppo.dart';
 import 'schermata_conversazione.dart';
+import 'schermata_configurazione_gruppo.dart';
 
 /// Schermata che mostra l'elenco dei gruppi a cui l'utente appartiene.
 class SchermataMieiGruppi extends StatefulWidget {
@@ -110,14 +111,32 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   subtitle: Text("Codice: ${gruppo.codiceAccesso}"),
-                  trailing: ElevatedButton(
-                    onPressed: () => _partecipaLive(context, gruppo),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    child: const Text("PARTECIPA", style: TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (gruppo.idCreatore == _uid)
+                        IconButton(
+                          icon: const Icon(Icons.settings, color: Colors.blueGrey),
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SchermataConfigurazioneGruppo(gruppo: gruppo),
+                              ),
+                            );
+                            setState(() {});
+                          },
+                        ),
+                      ElevatedButton(
+                        onPressed: () => _partecipaLive(context, gruppo),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        child: const Text("PARTECIPA", style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
                   onTap: () async {
                     await Navigator.push(
