@@ -42,7 +42,7 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore durante l'accesso alla live: $e")),
+          SnackBar(content: Text(AppLocalizations.of(context)!.joinLiveError(e.toString()))),
         );
       }
     }
@@ -81,13 +81,13 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
                   const Icon(Icons.group_off, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
                   Text(
-                    l10n.myGroups, // Or a specific empty message string
+                    l10n.noGroupsJoined,
                     style: const TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text(l10n.logoutTooltip), // Or a specific "Back" string
+                    child: Text(l10n.backToHome),
                   ),
                 ],
               ),
@@ -113,7 +113,7 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
                     gruppo.nome,
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
-                  subtitle: Text("Codice: ${gruppo.codiceAccesso}"),
+                  subtitle: Text("${l10n.groupCode}: ${gruppo.codiceAccesso}"),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -137,7 +137,7 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                         ),
-                        child: const Text("PARTECIPA", style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(l10n.joinLive, style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),

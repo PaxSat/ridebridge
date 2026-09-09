@@ -578,6 +578,30 @@ abstract class AppLocalizations {
   /// **'SALVA MODIFICHE'**
   String get saveChanges;
 
+  /// No description provided for @joinLive.
+  ///
+  /// In it, this message translates to:
+  /// **'PARTECIPA'**
+  String get joinLive;
+
+  /// No description provided for @joinLiveError.
+  ///
+  /// In it, this message translates to:
+  /// **'Errore durante l\'accesso alla live: {error}'**
+  String joinLiveError(String error);
+
+  /// No description provided for @noGroupsJoined.
+  ///
+  /// In it, this message translates to:
+  /// **'Non fai parte di alcun gruppo'**
+  String get noGroupsJoined;
+
+  /// No description provided for @backToHome.
+  ///
+  /// In it, this message translates to:
+  /// **'Torna alla Home'**
+  String get backToHome;
+
   /// No description provided for @participantsLive.
   ///
   /// In it, this message translates to:
@@ -631,6 +655,36 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Nessun partecipante'**
   String get noParticipants;
+
+  /// No description provided for @appInfo.
+  ///
+  /// In it, this message translates to:
+  /// **'Informazioni App'**
+  String get appInfo;
+
+  /// No description provided for @developer.
+  ///
+  /// In it, this message translates to:
+  /// **'Sviluppatore'**
+  String get developer;
+
+  /// No description provided for @version.
+  ///
+  /// In it, this message translates to:
+  /// **'Versione'**
+  String get version;
+
+  /// No description provided for @aboutText.
+  ///
+  /// In it, this message translates to:
+  /// **'RideBridge è nata dalla passione per le due ruote e dalla voglia di rendere ogni viaggio in gruppo più sicuro e connesso. Grazie per far parte della nostra community!'**
+  String get aboutText;
+
+  /// No description provided for @credits.
+  ///
+  /// In it, this message translates to:
+  /// **'Creato con ❤️ per i motociclisti'**
+  String get credits;
 
   /// No description provided for @aheadOfLeader.
   ///

@@ -264,6 +264,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveChanges => 'SAVE CHANGES';
 
   @override
+  String get joinLive => 'JOIN LIVE';
+
+  @override
+  String joinLiveError(String error) {
+    return 'Error joining live: $error';
+  }
+
+  @override
+  String get noGroupsJoined => 'No groups joined';
+
+  @override
+  String get backToHome => 'Back to Home';
+
+  @override
   String get participantsLive => 'LIVE PARTICIPANTS';
 
   @override
@@ -289,6 +303,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noParticipants => 'No participants';
+
+  @override
+  String get appInfo => 'App Info';
+
+  @override
+  String get developer => 'Developer';
+
+  @override
+  String get version => 'Version';
+
+  @override
+  String get aboutText =>
+      'RideBridge was born from a passion for two wheels and the desire to make every group trip safer and more connected. Thank you for being part of our community!';
+
+  @override
+  String get credits => 'Created with ❤️ for motorcyclists';
 
   @override
   String get aheadOfLeader =>

@@ -75,6 +75,16 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     }
   }
 
+  void _applicaPreset(ConfigurazioneGruppo preset) {
+    setState(() {
+      _turnThresholdAngle.text = preset.turnThresholdAngle.toString();
+      _triggerDistanceMeters.text = preset.triggerDistanceMeters.toString();
+      _distanzaMassimaGruppo.text = preset.distanzaMassimaGruppo.toString();
+      _distanzaMassimaScopa.text = preset.distanzaMassimaScopa.toString();
+      _offRouteThreshold.text = preset.offRouteThreshold.toString();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -88,6 +98,19 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text("PRESET VELOCI", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _bottonePreset("Touring", Icons.map_outlined, () => _applicaPreset(ConfigurazioneGruppo.touring())),
+                  _bottonePreset("Sport", Icons.speed, () => _applicaPreset(ConfigurazioneGruppo.sportivo())),
+                  _bottonePreset("Offroad", Icons.terrain, () => _applicaPreset(ConfigurazioneGruppo.offroad())),
+                ],
+              ),
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
               Text(l10n.navParameters, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
               const SizedBox(height: 16),
               _campoNumerico(
@@ -164,6 +187,24 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
           if (double.tryParse(value) == null) return l10n.invalidNumber;
           return null;
         },
+      ),
+    );
+  }
+
+  Widget _bottonePreset(String etichetta, IconData icona, VoidCallback onPressed) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icona, size: 18),
+          label: Text(etichetta, style: const TextStyle(fontSize: 12)),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            foregroundColor: Colors.blueGrey,
+            side: const BorderSide(color: Colors.blueGrey),
+          ),
+        ),
       ),
     );
   }

@@ -110,6 +110,15 @@
   "motorcycleHint": "e.g. Ducati Monster, BMW GS...",
   "motorcycleError": "Enter your motorcycle model",
   "saveChanges": "SAVE CHANGES",
+  "joinLive": "JOIN LIVE",
+  "joinLiveError": "Error joining live: {error}",
+  "@joinLiveError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "noGroupsJoined": "No groups joined",
+  "backToHome": "Back to Home",
   "participantsLive": "LIVE PARTICIPANTS",
   "scopa": "SWEEPER",
   "leader": "LEADER",
@@ -119,6 +128,11 @@
   "assistanceRequested": "ASSISTANCE REQUESTED",
   "none": "None",
   "noParticipants": "No participants",
+  "appInfo": "App Info",
+  "developer": "Developer",
+  "version": "Version",
+  "aboutText": "RideBridge was born from a passion for two wheels and the desire to make every group trip safer and more connected. Thank you for being part of our community!",
+  "credits": "Created with ❤️ for motorcyclists",
   "aheadOfLeader": "Warning: you are ahead of the leader, please return to formation.",
   "behindSweeper": "Warning: you are behind the sweeper, please return to formation.",
   "offRoute": "You are off route. Do you want to start navigation towards the leader?",

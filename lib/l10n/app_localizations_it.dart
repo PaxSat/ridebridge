@@ -265,6 +265,20 @@ class AppLocalizationsIt extends AppLocalizations {
   String get saveChanges => 'SALVA MODIFICHE';
 
   @override
+  String get joinLive => 'PARTECIPA';
+
+  @override
+  String joinLiveError(String error) {
+    return 'Errore durante l\'accesso alla live: $error';
+  }
+
+  @override
+  String get noGroupsJoined => 'Non fai parte di alcun gruppo';
+
+  @override
+  String get backToHome => 'Torna alla Home';
+
+  @override
   String get participantsLive => 'PARTECIPANTI LIVE';
 
   @override
@@ -290,6 +304,22 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get noParticipants => 'Nessun partecipante';
+
+  @override
+  String get appInfo => 'Informazioni App';
+
+  @override
+  String get developer => 'Sviluppatore';
+
+  @override
+  String get version => 'Versione';
+
+  @override
+  String get aboutText =>
+      'RideBridge è nata dalla passione per le due ruote e dalla voglia di rendere ogni viaggio in gruppo più sicuro e connesso. Grazie per far parte della nostra community!';
+
+  @override
+  String get credits => 'Creato con ❤️ per i motociclisti';
 
   @override
   String get aheadOfLeader =>

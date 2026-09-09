@@ -1,10 +1,4 @@
 /// Rappresenta la configurazione tecnica del gruppo per il tracciamento GPS e la navigazione.
-/// Valori ottimizzati per una carovana motociclistica turistica.
-/// 
-/// TODO: Implementare preset futuri:
-/// - Touring (Valori attuali)
-/// - Sport (Soglie più strette)
-/// - Offroad (Tracciamento più frequente)
 class ConfigurazioneGruppo {
   final double turnThresholdAngle; // Angolo minimo per rilevare una svolta
   final double triggerDistanceMeters; // Distanza minima per registrare un waypoint
@@ -19,6 +13,31 @@ class ConfigurazioneGruppo {
     this.distanzaMassimaScopa = 2000.0,
     this.offRouteThreshold = 150.0,
   });
+
+  /// Preset per carovana turistica (Bilanciato).
+  factory ConfigurazioneGruppo.touring() => ConfigurazioneGruppo();
+
+  /// Preset per guida sportiva (Soglie incrementate per velocità elevate e distanziamento).
+  factory ConfigurazioneGruppo.sportivo() {
+    return ConfigurazioneGruppo(
+      turnThresholdAngle: 45.0,
+      triggerDistanceMeters: 250.0,
+      distanzaMassimaGruppo: 3000.0,
+      distanzaMassimaScopa: 5000.0,
+      offRouteThreshold: 300.0,
+    );
+  }
+
+  /// Preset per guida fuoristrada (Soglie diminuite per massima precisione tecnica).
+  factory ConfigurazioneGruppo.offroad() {
+    return ConfigurazioneGruppo(
+      turnThresholdAngle: 15.0,
+      triggerDistanceMeters: 25.0,
+      distanzaMassimaGruppo: 300.0,
+      distanzaMassimaScopa: 600.0,
+      offRouteThreshold: 40.0,
+    );
+  }
 
   /// Crea un oggetto [ConfigurazioneGruppo] da una mappa Firestore.
   factory ConfigurazioneGruppo.daMappa(Map<String, dynamic> mappa) {

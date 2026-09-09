@@ -9,6 +9,7 @@ import 'schermata_crea_gruppo.dart';
 import 'schermata_miei_gruppi.dart';
 import 'schermata_entra_gruppo.dart';
 import 'schermata_profilo.dart';
+import 'schermata_info.dart';
 
 /// Schermata principale dell'applicazione dopo il login.
 class SchermataHome extends StatefulWidget {
@@ -31,6 +32,15 @@ class _SchermataHomeState extends State<SchermataHome> {
       appBar: AppBar(
         title: Text(l10n.appTitle),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.info_outline),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SchermataInfo()),
+            );
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
