@@ -26,13 +26,13 @@ class FormationManager {
     required PosizioneGps? posizioneScopa,
     required ConfigurazioneGruppo config,
   }) {
-    // 0. Verifica GROUP_BROKEN (Distanza Leader-Scopa troppo elevata)
+    // 0. Verifica GROUP_BROKEN (Distanza Leader-Scopa supera distanzaMassimaGruppo)
     if (posizioneLeader != null && posizioneScopa != null) {
       double distLeaderScopa = _evaluator.distanzaTraDuePunti(
         posizioneLeader.latitudine, posizioneLeader.longitudine,
         posizioneScopa.latitudine, posizioneScopa.longitudine,
       );
-      if (distLeaderScopa > config.distanzaMassimaScopa) {
+      if (distLeaderScopa > config.distanzaMassimaGruppo) {
         return StatoCarovana.groupBroken;
       }
     }
@@ -90,19 +90,19 @@ class FormationManager {
     switch (stato) {
       case StatoCarovana.aheadOfLeader:
         tipo = TipoAvvisoCarovana.aheadOfLeader;
-        messaggio = "Sei avanti al Leader! Rallenta.";
+        messaggio = "Attenzione. Sei avanti al leader. Rientra in formazione.";
         break;
       case StatoCarovana.behindSweeper:
         tipo = TipoAvvisoCarovana.behindSweeper;
-        messaggio = "Sei rimasto dietro la Scopa!";
+        messaggio = "Attenzione. Sei dietro la scopa. Rientra nel gruppo.";
         break;
       case StatoCarovana.offRoute:
         tipo = TipoAvvisoCarovana.offRoute;
-        messaggio = "Sembri fuori percorso.";
+        messaggio = "Sei fuori percorso. Torna verso il leader.";
         break;
       case StatoCarovana.groupBroken:
         tipo = TipoAvvisoCarovana.groupBroken;
-        messaggio = "La carovana si è spezzata! Leader troppo lontano dalla Scopa.";
+        messaggio = "Gruppo spezzato. Leader troppo distante.";
         break;
       default:
         return null;

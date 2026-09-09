@@ -25,6 +25,7 @@ class RouteTracker {
       
       if (tipoSvolta != null) {
         final nuovoEvento = EventoPercorso(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
           idGruppo: idGruppo,
           idLeader: idLeader,
           tipoEvento: tipoSvolta,

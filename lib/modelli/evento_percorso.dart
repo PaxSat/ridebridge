@@ -11,6 +11,7 @@ enum TipoEventoPercorso {
 
 /// Rappresenta un evento specifico registrato durante il tragitto del gruppo.
 class EventoPercorso {
+  final String id;
   final String idGruppo;
   final String idLeader;
   final TipoEventoPercorso tipoEvento;
@@ -19,6 +20,7 @@ class EventoPercorso {
   final DateTime timestamp;
 
   EventoPercorso({
+    required this.id,
     required this.idGruppo,
     required this.idLeader,
     required this.tipoEvento,
@@ -28,8 +30,9 @@ class EventoPercorso {
   });
 
   /// Crea un oggetto [EventoPercorso] da una mappa Firestore.
-  factory EventoPercorso.daMappa(Map<String, dynamic> mappa) {
+  factory EventoPercorso.daMappa(Map<String, dynamic> mappa, String documentoId) {
     return EventoPercorso(
+      id: documentoId,
       idGruppo: mappa['idGruppo'] ?? '',
       idLeader: mappa['idLeader'] ?? '',
       tipoEvento: TipoEventoPercorso.values.firstWhere(
@@ -56,6 +59,7 @@ class EventoPercorso {
 
   /// Crea una copia dell'evento con alcuni campi modificati.
   EventoPercorso copiaCon({
+    String? id,
     String? idGruppo,
     String? idLeader,
     TipoEventoPercorso? tipoEvento,
@@ -64,6 +68,7 @@ class EventoPercorso {
     DateTime? timestamp,
   }) {
     return EventoPercorso(
+      id: id ?? this.id,
       idGruppo: idGruppo ?? this.idGruppo,
       idLeader: idLeader ?? this.idLeader,
       tipoEvento: tipoEvento ?? this.tipoEvento,

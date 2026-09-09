@@ -10,6 +10,7 @@ import 'schermata_miei_gruppi.dart';
 import 'schermata_entra_gruppo.dart';
 import 'schermata_profilo.dart';
 import 'schermata_info.dart';
+import 'schermata_debug_georef.dart';
 
 /// Schermata principale dell'applicazione dopo il login.
 class SchermataHome extends StatefulWidget {
@@ -171,6 +172,19 @@ class _SchermataHomeState extends State<SchermataHome> {
                         MaterialPageRoute(builder: (context) => const SchermataEntraGruppo()),
                       );
                       setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _costruisciBottoneAzione(
+                    context: context,
+                    icona: Icons.bug_report_outlined,
+                    etichetta: "DEBUG GEOREF",
+                    colore: Colors.deepPurple,
+                    azione: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SchermataDebugGeoref()),
+                      );
                     },
                   ),
                   const SizedBox(height: 40),

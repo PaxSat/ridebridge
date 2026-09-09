@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/configurazione_gruppo.dart';
 import '../modelli/evento_percorso.dart';
+import '../modelli/avviso_carovana.dart';
 import '../servizi/servizio_posizione_fake.dart';
 import '../servizi/route_tracker.dart';
 import '../servizi/formation_manager.dart';
+import '../servizi/waypoint_manager.dart';
 
 class SchermataDebugGeoref extends StatefulWidget {
   const SchermataDebugGeoref({super.key});
@@ -18,10 +20,14 @@ class _SchermataDebugGeorefState extends State<SchermataDebugGeoref> {
   final _fakeGps = ServizioPosizioneFake();
   final _tracker = RouteTracker();
   final _formation = FormationManager();
+  final _waypointManager = WaypointManager();
   final _config = ConfigurazioneGruppo(); // Touring di default
 
   Map<String, PosizioneGps> _ultimePosizioni = {};
   final Map<String, StatoCarovana> _statiMembri = {};
+  final Map<String, String?> _messaggiNavigazione = {};
+  final Map<String, AvvisoCarovana?> _avvisiAttivi = {};
+  String? _ultimoMembroCarovana;
   StreamSubscription? _subscription;
 
   @override
@@ -41,7 +47,7 @@ class _SchermataDebugGeorefState extends State<SchermataDebugGeoref> {
     final scopa = _ultimePosizioni['scopa'];
 
     if (leader != null) {
-      // 1. Tracciamento Waypoint (Leader)
+      // 1. Rilevamento Svolte (Leader)
       _tracker.processaPosizioneLeader(
         idGruppo: "debug_group",
         idLeader: "leader_uid",
@@ -50,16 +56,20 @@ class _SchermataDebugGeorefState extends State<SchermataDebugGeoref> {
         bearingAttuale: leader.direzione,
         turnThreshold: _config.turnThresholdAngle,
       );
+
+      // Sincronizziamo i nuovi waypoint con il WaypointManager
+      for (var wp in _tracker.waypointAttivi) {
+        _waypointManager.aggiungiWaypoint(wp);
+      }
     }
 
-    if (scopa != null) {
-      // 2. Rimozione Waypoint (Scopa)
-      _tracker.aggiornaWaypointsPassati(scopa.latitudine, scopa.longitudine, 50.0);
-    }
+    // 2. Aggiornamento progresso carovana sui waypoint
+    _waypointManager.aggiornaProgresso(_ultimePosizioni);
+    _ultimoMembroCarovana = _waypointManager.identificaUltimoMembro(_ultimePosizioni);
 
-    // 3. Verifica Formazione per tutti
+    // 3. Verifica Formazione e Messaggi per tutti
     _ultimePosizioni.forEach((id, pos) {
-      _statiMembri[id] = _formation.verificaFormazione(
+      final stato = _formation.verificaFormazione(
         idUtente: id,
         idLeader: "leader",
         idScopa: "scopa",
@@ -68,6 +78,33 @@ class _SchermataDebugGeorefState extends State<SchermataDebugGeoref> {
         posizioneScopa: scopa,
         config: _config,
       );
+      
+      _statiMembri[id] = stato;
+      _avvisiAttivi[id] = _formation.generaAvviso(id, stato);
+
+      // ORDINE DI PRIORITÀ MESSAGGI (Prompt 017)
+      // 1. OFF_ROUTE
+      // 2. BEHIND_SWEEPER (With Waypoints)
+      // 3. AHEAD_OF_LEADER (Waypoints Disabled)
+      // 4. Waypoint
+      
+      String? msg;
+      final avviso = _avvisiAttivi[id];
+      final wpMsg = _waypointManager.ottieniIstruzioneNavigazione(id, pos, _config.triggerDistanceMeters);
+
+      if (stato == StatoCarovana.offRoute) {
+        msg = avviso?.messaggio;
+      } else if (stato == StatoCarovana.behindSweeper) {
+        msg = "${avviso?.messaggio ?? ''} ${wpMsg ?? ''}".trim();
+      } else if (stato == StatoCarovana.aheadOfLeader) {
+        msg = avviso?.messaggio;
+      } else if (stato == StatoCarovana.groupBroken) {
+        msg = avviso?.messaggio;
+      } else {
+        msg = wpMsg ?? "In formazione...";
+      }
+      
+      _messaggiNavigazione[id] = msg;
     });
   }
 
@@ -105,44 +142,70 @@ class _SchermataDebugGeorefState extends State<SchermataDebugGeoref> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("LEADER", style: TextStyle(fontWeight: FontWeight.bold)),
-              Text("Bearing: ${leader?.direzione.toStringAsFixed(1)}°"),
+              Text("Ultimo: ${_ultimoMembroCarovana ?? '...'}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
             ],
           ),
           const SizedBox(height: 8),
-          Text("Lat: ${leader?.latitudine.toStringAsFixed(6)}"),
-          Text("Lon: ${leader?.longitudine.toStringAsFixed(6)}"),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Lat: ${leader?.latitudine.toStringAsFixed(6)}"),
+              Text("Bearing: ${leader?.direzione.toStringAsFixed(1)}°"),
+            ],
+          ),
         ],
       ),
     );
   }
 
   Widget _costruisciSezioneWaypoints() {
-    final wps = _tracker.waypointAttivi;
+    final attivi = _waypointManager.waypointsAttivi;
+    final completati = _waypointManager.waypointsCompletati;
+
     return Expanded(
-      flex: 1,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text("WAYPOINT ATTIVI (${wps.length})", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: wps.length,
-              itemBuilder: (context, i) {
-                final wp = wps[i];
-                return ListTile(
-                  dense: true,
-                  leading: Icon(_ottieniIconaSvolta(wp.tipoEvento), color: Colors.blue),
-                  title: Text(wp.tipoEvento.name),
-                  subtitle: Text("Lat: ${wp.latitudine.toStringAsFixed(4)} Lon: ${wp.longitudine.toStringAsFixed(4)}"),
-                );
-              },
+      flex: 2,
+      child: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            const TabBar(
+              tabs: [
+                Tab(text: "ATTIVI"),
+                Tab(text: "COMPLETATI"),
+              ],
+              labelColor: Colors.orange,
+              unselectedLabelColor: Colors.grey,
             ),
-          ),
-        ],
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _listaManagedWaypoints(attivi),
+                  _listaManagedWaypoints(completati),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _listaManagedWaypoints(List<ManagedWaypoint> list) {
+    return ListView.builder(
+      itemCount: list.length,
+      itemBuilder: (context, i) {
+        final mw = list[i];
+        return ListTile(
+          dense: true,
+          leading: Icon(_ottieniIconaSvolta(mw.evento.tipoEvento), 
+                color: mw.status == WaypointStatus.attivo ? Colors.blue : Colors.green),
+          title: Text("${mw.evento.tipoEvento.name} (ID: ${mw.evento.id.substring(mw.evento.id.length - 4)})"),
+          subtitle: Text("Passati: ${mw.partecipantiPassati.length} / ${_ultimePosizioni.length}"),
+          trailing: mw.status == WaypointStatus.completato 
+              ? const Icon(Icons.check_circle, color: Colors.green) 
+              : null,
+        );
+      },
     );
   }
 
@@ -159,19 +222,35 @@ class _SchermataDebugGeorefState extends State<SchermataDebugGeoref> {
           Expanded(
             child: ListView(
               children: _ultimePosizioni.keys.map((id) {
+                final pos = _ultimePosizioni[id]!;
                 final stato = _statiMembri[id];
-                return ListTile(
-                  title: Text(id.toUpperCase()),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _ottieniColoreStato(stato),
-                      borderRadius: BorderRadius.circular(12),
+                final eUltimo = id == _ultimoMembroCarovana;
+                final istruzione = _messaggiNavigazione[id];
+                final avviso = _avvisiAttivi[id];
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: ExpansionTile(
+                    leading: CircleAvatar(
+                      backgroundColor: _ottieniColoreStato(stato),
+                      child: Text(id[0].toUpperCase(), style: const TextStyle(color: Colors.white)),
                     ),
-                    child: Text(
-                      stato?.name ?? "unknown",
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
+                    title: Text("${id.toUpperCase()} ${eUltimo ? '(ULTIMO)' : ''}"),
+                    subtitle: Text(avviso?.messaggio ?? (istruzione ?? "In formazione...")),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Stato: ${stato?.name}"),
+                            Text("Nav: ${istruzione ?? 'nessuna'}"),
+                            Text("Avviso: ${avviso?.messaggio ?? 'nessuno'}"),
+                            Text("Coord: ${pos.latitudine.toStringAsFixed(5)}, ${pos.longitudine.toStringAsFixed(5)}"),
+                          ],
+                        ),
+                      )
+                    ],
                   ),
                 );
               }).toList(),
