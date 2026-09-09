@@ -15,6 +15,20 @@ class LocationEvaluator {
     return raggioTerra * c;
   }
 
+  /// Calcola l'angolo di direzione (bearing) tra due punti (0-359 gradi).
+  double calcolaBearing(double lat1, double lon1, double lat2, double lon2) {
+    final lat1Rad = lat1 * math.pi / 180.0;
+    final lat2Rad = lat2 * math.pi / 180.0;
+    final deltaLon = (lon2 - lon1) * math.pi / 180.0;
+
+    final y = math.sin(deltaLon) * math.cos(lat2Rad);
+    final x = math.cos(lat1Rad) * math.sin(lat2Rad) - 
+              math.sin(lat1Rad) * math.cos(lat2Rad) * math.cos(deltaLon);
+    
+    final bearing = math.atan2(y, x) * 180.0 / math.pi;
+    return (bearing + 360.0) % 360.0;
+  }
+
   /// Calcola la distanza di un utente dal Leader del gruppo.
   double distanzaDalLeader(double latUtente, double lonUtente, double latLeader, double lonLeader) {
     return distanzaTraDuePunti(latUtente, lonUtente, latLeader, lonLeader);
@@ -25,19 +39,25 @@ class LocationEvaluator {
     return distanzaTraDuePunti(latUtente, lonUtente, latScopa, lonScopa);
   }
 
-  /// Verifica se un utente è uscito dal percorso stabilito (placeholder).
-  bool eFuoriPercorso(double lat, double lon) {
-    // Implementazione futura con polyline
-    return false;
+  /// Verifica se un utente è uscito dal percorso stabilito (rispetto alla distanza dal leader/scopa o polyline).
+  bool eFuoriPercorso(double distanzaDalPercorso, double soglia) {
+    return distanzaDalPercorso > soglia;
   }
 
-  /// Verifica se un utente ha superato il Leader (placeholder).
+  /// Verifica se un utente ha superato il Leader.
+  /// Utilizza il bearing tra leader e utente confrontato con la direzione del leader.
   bool eAvantiAlLeader(double latUtente, double lonUtente, double latLeader, double lonLeader, double direzioneLeader) {
-    return false;
+    final bearingLeaderUtente = calcolaBearing(latLeader, lonLeader, latUtente, lonUtente);
+    final diff = (bearingLeaderUtente - direzioneLeader + 180 + 360) % 360 - 180;
+    // Se la differenza è tra -90 e 90 gradi, l'utente è "davanti" (nel semicerchio frontale)
+    return diff.abs() < 90;
   }
 
-  /// Verifica se un utente è rimasto troppo indietro rispetto alla Scopa (placeholder).
+  /// Verifica se un utente è rimasto troppo indietro rispetto alla Scopa.
   bool eDietroLaScopa(double latUtente, double lonUtente, double latScopa, double lonScopa, double direzioneScopa) {
-    return false;
+    final bearingScopaUtente = calcolaBearing(latScopa, lonScopa, latUtente, lonUtente);
+    final diff = (bearingScopaUtente - direzioneScopa + 180 + 360) % 360 - 180;
+    // Se la differenza è maggiore di 90 o minore di -90, l'utente è "dietro"
+    return diff.abs() > 90;
   }
 }
