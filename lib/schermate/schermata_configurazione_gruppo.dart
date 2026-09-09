@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/configurazione_gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
@@ -64,11 +65,11 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
       await _servizioGruppi.salvaConfigurazione(widget.gruppo.id, nuovaConfig);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Configurazione salvata")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.configSaved)));
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorPrefix(e.toString()))));
     } finally {
       if (mounted) setState(() => _inCaricamento = false);
     }
@@ -76,8 +77,10 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Configurazione Gruppo"), centerTitle: true),
+      appBar: AppBar(title: Text(l10n.groupConfiguration), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -85,34 +88,34 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Parametri Navigazione", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
+              Text(l10n.navParameters, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
               const SizedBox(height: 16),
               _campoNumerico(
                 controller: _turnThresholdAngle,
-                etichetta: "Angolo Svolta (gradi)",
+                etichetta: l10n.turnAngle,
                 suggerimento: "es. 20.0",
               ),
               _campoNumerico(
                 controller: _triggerDistanceMeters,
-                etichetta: "Distanza Waypoint (metri)",
+                etichetta: l10n.waypointDistance,
                 suggerimento: "es. 10.0",
               ),
               const SizedBox(height: 32),
-              const Text("Soglie Carovana", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
+              Text(l10n.convoyThresholds, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
               const SizedBox(height: 16),
               _campoNumerico(
                 controller: _distanzaMassimaGruppo,
-                etichetta: "Distanza Max Gruppo (metri)",
+                etichetta: l10n.maxGroupDistance,
                 suggerimento: "es. 500.0",
               ),
               _campoNumerico(
                 controller: _distanzaMassimaScopa,
-                etichetta: "Distanza Max Scopa (metri)",
+                etichetta: l10n.maxSweeperDistance,
                 suggerimento: "es. 1000.0",
               ),
               _campoNumerico(
                 controller: _offRouteThreshold,
-                etichetta: "Soglia Fuori Percorso (metri)",
+                etichetta: l10n.offRouteThreshold,
                 suggerimento: "es. 50.0",
               ),
               const SizedBox(height: 48),
@@ -128,7 +131,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
                   ),
                   child: _inCaricamento 
                       ? const CircularProgressIndicator(color: Colors.white) 
-                      : const Text("SALVA CONFIGURAZIONE", style: TextStyle(fontWeight: FontWeight.bold)),
+                      : Text(l10n.saveConfiguration, style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -143,6 +146,8 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     required String etichetta,
     required String suggerimento,
   }) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
@@ -155,8 +160,8 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
           prefixIcon: const Icon(Icons.settings_input_component),
         ),
         validator: (value) {
-          if (value == null || value.isEmpty) return "Campo obbligatorio";
-          if (double.tryParse(value) == null) return "Inserisci un numero valido";
+          if (value == null || value.isEmpty) return l10n.requiredField;
+          if (double.tryParse(value) == null) return l10n.invalidNumber;
           return null;
         },
       ),

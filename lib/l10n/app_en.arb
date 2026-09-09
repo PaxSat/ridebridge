@@ -1,0 +1,133 @@
+{
+  "@@locale": "en",
+  "appTitle": "RideBridge",
+  "appSubtitle": "Your intelligent intercom",
+  "loginButton": "SIGN IN WITH GOOGLE",
+  "loginError": "Login error: {error}",
+  "@loginError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "logoutTooltip": "Logout",
+  "welcomeMessage": "Welcome, {name}",
+  "@welcomeMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "myGroups": "MY GROUPS",
+  "createGroup": "CREATE GROUP",
+  "joinGroup": "JOIN GROUP",
+  "profile": "MY PROFILE",
+  "groupConfiguration": "Group Configuration",
+  "navParameters": "Navigation Parameters",
+  "turnAngle": "Turn Angle (degrees)",
+  "waypointDistance": "Waypoint Distance (meters)",
+  "convoyThresholds": "Convoy Thresholds",
+  "maxGroupDistance": "Max Group Distance (meters)",
+  "maxSweeperDistance": "Max Sweeper Distance (meters)",
+  "offRouteThreshold": "Off Route Threshold (meters)",
+  "saveConfiguration": "SAVE CONFIGURATION",
+  "configSaved": "Configuration saved",
+  "errorPrefix": "Error: {error}",
+  "@errorPrefix": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "requiredField": "Required field",
+  "invalidNumber": "Enter a valid number",
+  "exitGroup": "Exit Group",
+  "exitGroupConfirm": "Are you sure you want to exit? You will no longer be able to communicate with the team.",
+  "cancel": "CANCEL",
+  "confirm": "CONFIRM",
+  "exit": "EXIT",
+  "deleteGroup": "DELETE GROUP",
+  "deleteGroupConfirm": "This action will deactivate the group for all participants. Are you sure?",
+  "delete": "DELETE",
+  "accessCode": "ACCESS CODE",
+  "share": "SHARE",
+  "copy": "COPY",
+  "yourRole": "YOUR ROLE",
+  "participants": "PARTICIPANTS",
+  "loading": "Loading...",
+  "codeCopied": "Code copied to clipboard",
+  "memberDetail": "Member Detail",
+  "memberNotFound": "Member not found",
+  "online": "Online",
+  "offline": "Offline",
+  "microphoneStatus": "Microphone: {status}",
+  "@microphoneStatus": {
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "audioStatus": "Audio: {status}",
+  "@audioStatus": {
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "emergencyActive": "EMERGENCY ACTIVE",
+  "leaderActions": "LEADER ACTIONS",
+  "makeSweeper": "Make Sweeper",
+  "removeSweeper": "Remove Sweeper",
+  "disableMic": "Disable Microphone",
+  "enableMic": "Enable Microphone",
+  "disableAudio": "Disable Audio",
+  "enableAudio": "Enable Audio",
+  "promoteToLeader": "Promote to Leader",
+  "transferLeadership": "Transfer Leadership",
+  "transferLeadershipConfirm": "Do you really want to nominate {name} as the new Leader? You will lose command powers.",
+  "@transferLeadershipConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "startAdventure": "Start a new adventure",
+  "chooseGroupName": "Choose a name for your motorcycle group.",
+  "groupName": "Group Name",
+  "groupNameHint": "e.g. Road Wolves",
+  "groupNameEmpty": "Group name cannot be empty",
+  "groupCreated": "Group created successfully",
+  "shareWithFriends": "Share this code with your friends:",
+  "ok": "OK",
+  "joinTeam": "Join the Team",
+  "enterCodeInstructions": "Enter the 6-character code received from your leader.",
+  "groupCode": "Group Code",
+  "groupCodeHint": "e.g. RIDE24",
+  "enterCodeError": "Enter the group code",
+  "joinSuccess": "Joined group successfully",
+  "myProfile": "My Profile",
+  "profileUpdated": "Profile updated successfully",
+  "nickname": "Nickname",
+  "nicknameHint": "Choose your rider name",
+  "nicknameError": "Enter a nickname",
+  "yourMotorcycle": "Your Motorcycle",
+  "motorcycleHint": "e.g. Ducati Monster, BMW GS...",
+  "motorcycleError": "Enter your motorcycle model",
+  "saveChanges": "SAVE CHANGES",
+  "participantsLive": "LIVE PARTICIPANTS",
+  "scopa": "SWEEPER",
+  "leader": "LEADER",
+  "sos": "SOS",
+  "speaking": "IS SPEAKING",
+  "sosActive": "🚨 SOS ACTIVE",
+  "assistanceRequested": "ASSISTANCE REQUESTED",
+  "none": "None",
+  "noParticipants": "No participants",
+  "aheadOfLeader": "Warning: you are ahead of the leader, please return to formation.",
+  "behindSweeper": "Warning: you are behind the sweeper, please return to formation.",
+  "offRoute": "You are off route. Do you want to start navigation towards the leader?",
+  "turnAlert": "In {distance} meters, turn {direction}.",
+  "@turnAlert": {
+    "placeholders": {
+      "distance": { "type": "int" },
+      "direction": { "type": "String" }
+    }
+  },
+  "rejoinLeader": "Navigate to Leader"
+}

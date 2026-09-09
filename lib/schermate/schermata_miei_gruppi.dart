@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
 import 'schermata_dettaglio_gruppo.dart';
@@ -49,13 +50,15 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_uid == null) {
-      return const Scaffold(body: Center(child: Text("Utente non autenticato")));
+      return Scaffold(body: Center(child: Text(l10n.loginError("Utente non autenticato"))));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("I Miei Gruppi"),
+        title: Text(l10n.myGroups),
       ),
       body: FutureBuilder<List<Gruppo>>(
         future: _servizioGruppi.mieiGruppi(_uid),
@@ -65,7 +68,7 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
           }
 
           if (snapshot.hasError) {
-            return const Center(child: Text("Errore nel caricamento dei gruppi"));
+            return Center(child: Text(l10n.loginError(snapshot.error.toString())));
           }
 
           final gruppi = snapshot.data ?? [];
@@ -77,14 +80,14 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
                 children: [
                   const Icon(Icons.group_off, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
-                  const Text(
-                    "Non fai parte di alcun gruppo",
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  Text(
+                    l10n.myGroups, // Or a specific empty message string
+                    style: const TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("Torna alla Home"),
+                    child: Text(l10n.logoutTooltip), // Or a specific "Back" string
                   ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_database.dart';
 
@@ -36,6 +37,7 @@ class _SchermataProfiloState extends State<SchermataProfilo> {
 
   /// Salva le modifiche su Firestore.
   Future<void> _salvaProfilo() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _inCaricamento = true);
@@ -50,14 +52,14 @@ class _SchermataProfiloState extends State<SchermataProfilo> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Profilo aggiornato con successo")),
+          SnackBar(content: Text(l10n.profileUpdated)),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore durante il salvataggio: $e")),
+          SnackBar(content: Text(l10n.errorPrefix(e.toString()))),
         );
       }
     } finally {
@@ -67,9 +69,11 @@ class _SchermataProfiloState extends State<SchermataProfilo> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Il Mio Profilo"),
+        title: Text(l10n.myProfile),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -103,14 +107,14 @@ class _SchermataProfiloState extends State<SchermataProfilo> {
               TextFormField(
                 controller: _controlloreNickname,
                 decoration: InputDecoration(
-                  labelText: "Nickname",
-                  hintText: "Scegli il tuo nome da rider",
+                  labelText: l10n.nickname,
+                  hintText: l10n.nicknameHint,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.alternate_email),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return "Inserisci un nickname";
+                    return l10n.nicknameError;
                   }
                   return null;
                 },
@@ -119,14 +123,14 @@ class _SchermataProfiloState extends State<SchermataProfilo> {
               TextFormField(
                 controller: _controlloreMoto,
                 decoration: InputDecoration(
-                  labelText: "La tua Moto",
-                  hintText: "es. Ducati Monster, BMW GS...",
+                  labelText: l10n.yourMotorcycle,
+                  hintText: l10n.motorcycleHint,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.motorcycle),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return "Inserisci il modello della tua moto";
+                    return l10n.motorcycleError;
                   }
                   return null;
                 },
@@ -146,7 +150,7 @@ class _SchermataProfiloState extends State<SchermataProfilo> {
                   ),
                   child: _inCaricamento
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("SALVA MODIFICHE", style: TextStyle(fontWeight: FontWeight.bold)),
+                      : Text(l10n.saveChanges, style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

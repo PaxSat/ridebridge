@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_auth.dart';
 import '../servizi/servizio_database.dart';
@@ -24,14 +25,16 @@ class _SchermataHomeState extends State<SchermataHome> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("RideBridge"),
+        title: Text(l10n.appTitle),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Esci',
+            tooltip: l10n.logoutTooltip,
             onPressed: () async {
               await _servizioAuth.esci();
               if (context.mounted) {
@@ -82,16 +85,16 @@ class _SchermataHomeState extends State<SchermataHome> {
                         : null,
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    "RideBridge",
-                    style: TextStyle(
+                  Text(
+                    l10n.appTitle,
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Benvenuto, $nomeVisualizzato",
+                    l10n.welcomeMessage(nomeVisualizzato),
                     style: const TextStyle(
                       fontSize: 20,
                       color: Colors.blueGrey,
@@ -103,7 +106,7 @@ class _SchermataHomeState extends State<SchermataHome> {
                   _costruisciBottoneAzione(
                     context: context,
                     icona: Icons.account_circle_outlined,
-                    etichetta: "IL MIO PROFILO",
+                    etichetta: l10n.profile,
                     colore: Colors.blueGrey,
                     azione: () async {
                       if (utente != null) {
@@ -122,7 +125,7 @@ class _SchermataHomeState extends State<SchermataHome> {
                   _costruisciBottoneAzione(
                     context: context,
                     icona: Icons.groups_outlined,
-                    etichetta: "I MIEI GRUPPI",
+                    etichetta: l10n.myGroups,
                     colore: Colors.green,
                     azione: () async {
                       await Navigator.push(
@@ -136,7 +139,7 @@ class _SchermataHomeState extends State<SchermataHome> {
                   _costruisciBottoneAzione(
                     context: context,
                     icona: Icons.add_circle_outline,
-                    etichetta: "CREA GRUPPO",
+                    etichetta: l10n.createGroup,
                     colore: Colors.orange,
                     azione: () async {
                       await Navigator.push(
@@ -150,7 +153,7 @@ class _SchermataHomeState extends State<SchermataHome> {
                   _costruisciBottoneAzione(
                     context: context,
                     icona: Icons.group_add_outlined,
-                    etichetta: "ENTRA NEL GRUPPO",
+                    etichetta: l10n.joinGroup,
                     colore: Colors.blue,
                     azione: () async {
                       await Navigator.push(

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
@@ -62,20 +63,21 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
       if (mounted) {
         setState(() => _inCaricamento = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore caricamento dati: $e")),
+          SnackBar(content: Text(AppLocalizations.of(context)!.errorPrefix(e.toString()))),
         );
       }
     }
   }
 
   String _formattaRuolo(RuoloGruppo ruolo) {
+    final l10n = AppLocalizations.of(context)!;
     switch (ruolo) {
       case RuoloGruppo.leader:
-        return "👑 Leader";
+        return "👑 ${l10n.leader}";
       case RuoloGruppo.scopa:
-        return "🏍️ Scopa";
+        return "🏍️ ${l10n.scopa}";
       case RuoloGruppo.partecipante:
-        return "👤 Partecipante";
+        return "👤 ${l10n.participants.substring(0, l10n.participants.length - 1)}"; // Small hack for singular
     }
   }
 
@@ -91,14 +93,15 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
   }
 
   Future<void> _esciDalGruppo() async {
+    final l10n = AppLocalizations.of(context)!;
     final conferma = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Esci dal Gruppo"),
-        content: const Text("Sei sicuro di voler uscire? Non potrai più comunicare con il team."),
+        title: Text(l10n.exitGroup),
+        content: Text(l10n.exitGroupConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("ANNULLA")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("ESCI")),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.exit)),
         ],
       ),
     );
@@ -117,17 +120,18 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
   }
 
   Future<void> _eliminaGruppo() async {
+    final l10n = AppLocalizations.of(context)!;
     final conferma = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("ELIMINA GRUPPO"),
-        content: const Text("Questa azione disattiverà il gruppo per tutti i partecipanti. Sei sicuro?"),
+        title: Text(l10n.deleteGroup),
+        content: Text(l10n.deleteGroupConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("ANNULLA")),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text("ELIMINA"),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -161,9 +165,9 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
     Clipboard.setData(ClipboardData(text: widget.gruppo.codiceAccesso));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Codice copiato negli appunti"),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.codeCopied),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -171,12 +175,14 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_inCaricamento) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_mioRuolo == null) {
-      return const Scaffold(body: Center(child: Text("Accesso negato o ruolo non trovato")));
+      return Scaffold(body: Center(child: Text(l10n.memberNotFound)));
     }
 
     final mioRuolo = _mioRuolo!;
@@ -198,7 +204,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
             ),
             child: Column(
               children: [
-                const Text("CODICE DI ACCESSO", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text(l10n.accessCode, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 8),
                 SelectableText(
                   widget.gruppo.codiceAccesso,
@@ -211,14 +217,14 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                     TextButton.icon(
                       onPressed: _condividiCodice,
                       icon: const Icon(Icons.share, size: 20),
-                      label: const Text("CONDIVIDI"),
+                      label: Text(l10n.share),
                       style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
                     ),
                     const SizedBox(width: 16),
                     TextButton.icon(
                       onPressed: _copiaCodice,
                       icon: const Icon(Icons.copy, size: 20),
-                      label: const Text("COPIA"),
+                      label: Text(l10n.copy),
                       style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
                     ),
                   ],
@@ -226,7 +232,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 8),
-                Text("IL TUO RUOLO", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text(l10n.yourRole, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 8),
                 Text(
                   _formattaRuolo(mioRuolo.ruolo),
@@ -237,13 +243,13 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
           ),
 
           // Lista Partecipanti
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                Icon(Icons.people_outline, color: Colors.orange),
-                SizedBox(width: 8),
-                Text("PARTECIPANTI", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Icon(Icons.people_outline, color: Colors.orange),
+                const SizedBox(width: 8),
+                Text(l10n.participants, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -276,7 +282,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                         final utente = uSnapshot.data;
                         final nomePartecipante = utente?.nickname?.isNotEmpty == true
                             ? utente!.nickname!
-                            : (utente?.nome ?? "Caricamento...");
+                            : (utente?.nome ?? l10n.loading);
                         
                         return ListTile(
                           onTap: () {
@@ -346,9 +352,9 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                                       child: Icon(Icons.volume_off, color: Colors.red, size: 14),
                                     ),
                                   if (p.statoAudio?.emergenzaAttiva == true)
-                                    const Text(
-                                      "🚨 EMERGENZA",
-                                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                                    Text(
+                                      "🚨 ${l10n.sos}",
+                                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
                                     ),
                                 ],
                               ),
@@ -373,7 +379,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                     child: ElevatedButton.icon(
                       onPressed: _eliminaGruppo,
                       icon: const Icon(Icons.delete_forever),
-                      label: const Text("ELIMINA GRUPPO"),
+                      label: Text(l10n.deleteGroup),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
@@ -387,7 +393,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                     child: OutlinedButton.icon(
                       onPressed: _esciDalGruppo,
                       icon: const Icon(Icons.exit_to_app),
-                      label: const Text("ESCI DAL GRUPPO"),
+                      label: Text(l10n.exitGroup),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red, width: 2),

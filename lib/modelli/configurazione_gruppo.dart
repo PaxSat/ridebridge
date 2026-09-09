@@ -1,4 +1,10 @@
 /// Rappresenta la configurazione tecnica del gruppo per il tracciamento GPS e la navigazione.
+/// Valori ottimizzati per una carovana motociclistica turistica.
+/// 
+/// TODO: Implementare preset futuri:
+/// - Touring (Valori attuali)
+/// - Sport (Soglie più strette)
+/// - Offroad (Tracciamento più frequente)
 class ConfigurazioneGruppo {
   final double turnThresholdAngle; // Angolo minimo per rilevare una svolta
   final double triggerDistanceMeters; // Distanza minima per registrare un waypoint
@@ -7,21 +13,21 @@ class ConfigurazioneGruppo {
   final double offRouteThreshold; // Distanza massima dalla polyline prima di OFF_ROUTE
 
   ConfigurazioneGruppo({
-    this.turnThresholdAngle = 20.0,
-    this.triggerDistanceMeters = 10.0,
-    this.distanzaMassimaGruppo = 500.0,
-    this.distanzaMassimaScopa = 1000.0,
-    this.offRouteThreshold = 50.0,
+    this.turnThresholdAngle = 35.0,
+    this.triggerDistanceMeters = 100.0,
+    this.distanzaMassimaGruppo = 1500.0,
+    this.distanzaMassimaScopa = 2000.0,
+    this.offRouteThreshold = 150.0,
   });
 
   /// Crea un oggetto [ConfigurazioneGruppo] da una mappa Firestore.
   factory ConfigurazioneGruppo.daMappa(Map<String, dynamic> mappa) {
     return ConfigurazioneGruppo(
-      turnThresholdAngle: (mappa['turnThresholdAngle'] as num?)?.toDouble() ?? 20.0,
-      triggerDistanceMeters: (mappa['triggerDistanceMeters'] as num?)?.toDouble() ?? 10.0,
-      distanzaMassimaGruppo: (mappa['distanzaMassimaGruppo'] as num?)?.toDouble() ?? 500.0,
-      distanzaMassimaScopa: (mappa['distanzaMassimaScopa'] as num?)?.toDouble() ?? 1000.0,
-      offRouteThreshold: (mappa['offRouteThreshold'] as num?)?.toDouble() ?? 50.0,
+      turnThresholdAngle: (mappa['turnThresholdAngle'] as num?)?.toDouble() ?? 35.0,
+      triggerDistanceMeters: (mappa['triggerDistanceMeters'] as num?)?.toDouble() ?? 100.0,
+      distanzaMassimaGruppo: (mappa['distanzaMassimaGruppo'] as num?)?.toDouble() ?? 1500.0,
+      distanzaMassimaScopa: (mappa['distanzaMassimaScopa'] as num?)?.toDouble() ?? 2000.0,
+      offRouteThreshold: (mappa['offRouteThreshold'] as num?)?.toDouble() ?? 150.0,
     );
   }
 

@@ -1,0 +1,133 @@
+{
+  "@@locale": "it",
+  "appTitle": "RideBridge",
+  "appSubtitle": "Il tuo interfono intelligente",
+  "loginButton": "ACCEDI CON GOOGLE",
+  "loginError": "Errore durante il login: {error}",
+  "@loginError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "logoutTooltip": "Esci",
+  "welcomeMessage": "Benvenuto, {name}",
+  "@welcomeMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "myGroups": "I MIEI GRUPPI",
+  "createGroup": "CREA GRUPPO",
+  "joinGroup": "ENTRA NEL GRUPPO",
+  "profile": "IL MIO PROFILO",
+  "groupConfiguration": "Configurazione Gruppo",
+  "navParameters": "Parametri Navigazione",
+  "turnAngle": "Angolo Svolta (gradi)",
+  "waypointDistance": "Distanza Waypoint (metri)",
+  "convoyThresholds": "Soglie Carovana",
+  "maxGroupDistance": "Distanza Max Gruppo (metri)",
+  "maxSweeperDistance": "Distanza Max Scopa (metri)",
+  "offRouteThreshold": "Soglia Fuori Percorso (metri)",
+  "saveConfiguration": "SALVA CONFIGURAZIONE",
+  "configSaved": "Configurazione salvata",
+  "errorPrefix": "Errore: {error}",
+  "@errorPrefix": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "requiredField": "Campo obbligatorio",
+  "invalidNumber": "Inserisci un numero valido",
+  "exitGroup": "Esci dal Gruppo",
+  "exitGroupConfirm": "Sei sicuro di voler uscire? Non potrai più comunicare con il team.",
+  "cancel": "ANNULLA",
+  "confirm": "CONFERMA",
+  "exit": "ESCI",
+  "deleteGroup": "ELIMINA GRUPPO",
+  "deleteGroupConfirm": "Questa azione disattiverà il gruppo per tutti i partecipanti. Sei sicuro?",
+  "delete": "ELIMINA",
+  "accessCode": "CODICE DI ACCESSO",
+  "share": "CONDIVIDI",
+  "copy": "COPIA",
+  "yourRole": "IL TUO RUOLO",
+  "participants": "PARTECIPANTI",
+  "loading": "Caricamento...",
+  "codeCopied": "Codice copiato negli appunti",
+  "memberDetail": "Dettaglio Membro",
+  "memberNotFound": "Membro non trovato",
+  "online": "Online",
+  "offline": "Offline",
+  "microphoneStatus": "Microfono: {status}",
+  "@microphoneStatus": {
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "audioStatus": "Audio: {status}",
+  "@audioStatus": {
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "emergencyActive": "EMERGENZA ATTIVA",
+  "leaderActions": "AZIONI LEADER",
+  "makeSweeper": "Nomina Scopa",
+  "removeSweeper": "Rimuovi Scopa",
+  "disableMic": "Disabilita Microfono",
+  "enableMic": "Abilita Microfono",
+  "disableAudio": "Disabilita Audio",
+  "enableAudio": "Abilita Audio",
+  "promoteToLeader": "Promuovi a Leader",
+  "transferLeadership": "Trasferisci Leadership",
+  "transferLeadershipConfirm": "Vuoi davvero nominare {name} nuovo Leader? Perderai i poteri di comando.",
+  "@transferLeadershipConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "enabled": "Abilitato",
+  "disabled": "Disabilitato",
+  "startAdventure": "Inizia una nuova avventura",
+  "chooseGroupName": "Scegli un nome per il tuo gruppo di motociclisti.",
+  "groupName": "Nome del Gruppo",
+  "groupNameHint": "es. I Lupi della Strada",
+  "groupNameEmpty": "Il nome del gruppo non può essere vuoto",
+  "groupCreated": "Gruppo creato con successo",
+  "shareWithFriends": "Condividi questo codice con i tuoi amici:",
+  "ok": "OK",
+  "joinTeam": "Unisciti al Team",
+  "enterCodeInstructions": "Inserisci il codice di 6 caratteri ricevuto dal tuo leader.",
+  "groupCode": "Codice Gruppo",
+  "groupCodeHint": "es. RIDE24",
+  "enterCodeError": "Inserisci il codice del gruppo",
+  "joinSuccess": "Entrato nel gruppo con successo",
+  "myProfile": "Il Mio Profilo",
+  "profileUpdated": "Profilo aggiornato con successo",
+  "nickname": "Nickname",
+  "nicknameHint": "Scegli il tuo nome da rider",
+  "nicknameError": "Inserisci un nickname",
+  "yourMotorcycle": "La tua Moto",
+  "motorcycleHint": "es. Ducati Monster, BMW GS...",
+  "motorcycleError": "Inserisci il modello della tua moto",
+  "saveChanges": "SALVA MODIFICHE",
+  "participantsLive": "PARTECIPANTI LIVE",
+  "scopa": "SCOPA",
+  "leader": "LEADER",
+  "sos": "SOS",
+  "speaking": "STA PARLANDO",
+  "sosActive": "🚨 SOS ATTIVO",
+  "assistanceRequested": "RICHIESTA ASSISTENZA",
+  "none": "Nessuno",
+  "noParticipants": "Nessun partecipante",
+  "aheadOfLeader": "Attenzione: sei avanti al leader, si è pregati di rientrare in formazione.",
+  "behindSweeper": "Attenzione: sei dietro la scopa, si è pregati di rientrare in formazione.",
+  "offRoute": "Sei fuori percorso. Vuoi avviare la navigazione verso il leader?",
+  "turnAlert": "Tra {distance} metri, svolta a {direction}.",
+  "@turnAlert": {
+    "placeholders": {
+      "distance": { "type": "int" },
+      "direction": { "type": "String" }
+    }
+  },
+  "rejoinLeader": "Naviga verso il Leader"
+}

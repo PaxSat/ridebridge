@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../servizi/servizio_gruppi.dart';
 
 /// Schermata per la creazione di un nuovo gruppo di motociclisti.
@@ -19,10 +20,11 @@ class _SchermataCreaGruppoState extends State<SchermataCreaGruppo> {
 
   /// Esegue la logica di creazione del gruppo.
   Future<void> _gestisciCreaGruppo() async {
+    final l10n = AppLocalizations.of(context)!;
     final nome = _controlloreNome.text.trim();
 
     if (nome.isEmpty) {
-      setState(() => _errore = "Il nome del gruppo non può essere vuoto");
+      setState(() => _errore = l10n.groupNameEmpty);
       return;
     }
 
@@ -44,7 +46,7 @@ class _SchermataCreaGruppoState extends State<SchermataCreaGruppo> {
         _mostraConferma(codice);
       }
     } catch (e) {
-      setState(() => _errore = "Errore durante la creazione: ${e.toString()}");
+      setState(() => _errore = l10n.errorPrefix(e.toString()));
     } finally {
       if (mounted) {
         setState(() => _inCaricamento = false);
@@ -54,15 +56,16 @@ class _SchermataCreaGruppoState extends State<SchermataCreaGruppo> {
 
   /// Mostra un dialogo di successo con il codice del gruppo.
   void _mostraConferma(String codice) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Gruppo creato con successo"),
+        title: Text(l10n.groupCreated),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Condividi questo codice con i tuoi amici:"),
+            Text(l10n.shareWithFriends),
             const SizedBox(height: 16),
             SelectableText(
               codice,
@@ -81,7 +84,7 @@ class _SchermataCreaGruppoState extends State<SchermataCreaGruppo> {
               Navigator.of(context).pop(); // Chiude il dialog
               Navigator.of(context).pop(); // Torna alla home
             },
-            child: const Text("OK"),
+            child: Text(l10n.ok),
           ),
         ],
       ),
@@ -90,34 +93,36 @@ class _SchermataCreaGruppoState extends State<SchermataCreaGruppo> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Crea Gruppo"),
+        title: Text(l10n.createGroup),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Inizia una nuova avventura",
-              style: TextStyle(
+            Text(
+              l10n.startAdventure,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              "Scegli un nome per il tuo gruppo di motociclisti.",
-              style: TextStyle(color: Colors.grey),
+            Text(
+              l10n.chooseGroupName,
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 32),
             TextField(
               controller: _controlloreNome,
               enabled: !_inCaricamento,
               decoration: InputDecoration(
-                labelText: "Nome del Gruppo",
-                hintText: "es. I Lupi della Strada",
+                labelText: l10n.groupName,
+                hintText: l10n.groupNameHint,
                 errorText: _errore,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -147,9 +152,9 @@ class _SchermataCreaGruppoState extends State<SchermataCreaGruppo> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        "CREA GRUPPO",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    : Text(
+                        l10n.createGroup,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
               ),
             ),

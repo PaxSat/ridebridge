@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../servizi/servizio_auth.dart';
 import 'schermata_home.dart';
 
@@ -32,7 +33,7 @@ class _SchermataLoginState extends State<SchermataLogin> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore durante il login: ${errore.toString()}"),
+            content: Text(AppLocalizations.of(context)!.loginError(errore.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -46,9 +47,11 @@ class _SchermataLoginState extends State<SchermataLogin> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("RideBridge"),
+        title: Text(l10n.appTitle),
         centerTitle: true,
       ),
       body: Center(
@@ -63,17 +66,17 @@ class _SchermataLoginState extends State<SchermataLogin> {
                 color: Colors.orange,
               ),
               const SizedBox(height: 24),
-              const Text(
-                "RideBridge",
-                style: TextStyle(
+              Text(
+                l10n.appTitle,
+                style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
                 ),
               ),
-              const Text(
-                "Il tuo interfono intelligente",
-                style: TextStyle(
+              Text(
+                l10n.appSubtitle,
+                style: const TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
                 ),
@@ -85,7 +88,7 @@ class _SchermataLoginState extends State<SchermataLogin> {
                 ElevatedButton.icon(
                   onPressed: _gestisciLogin,
                   icon: const Icon(Icons.login),
-                  label: const Text("ACCEDI CON GOOGLE"),
+                  label: Text(l10n.loginButton),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,

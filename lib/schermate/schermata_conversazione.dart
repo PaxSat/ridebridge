@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
@@ -78,6 +79,8 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return StreamBuilder<List<PartecipanteGruppo>>(
       stream: FirebaseFirestore.instance
           .collection('gruppi')
@@ -111,13 +114,13 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
             children: [
               _costruisciHeaderControlli(),
               _costruisciSezioneParlante(),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
-                    Icon(Icons.people, size: 20, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text("PARTECIPANTI LIVE", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Icon(Icons.people, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(l10n.participantsLive, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                   ],
                 ),
               ),
@@ -130,6 +133,8 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   }
 
   Widget _costruisciHeaderControlli() {
+    final l10n = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -142,28 +147,28 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           if (widget.mioRuoloIniziale == RuoloGruppo.leader)
             _bottoneCircolare(
               icona: Icons.podcasts,
-              etichetta: "SCOPA",
+              etichetta: l10n.scopa,
               colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
               onTap: _gestisciCanaleSpeciale,
             ),
           if (widget.mioRuoloIniziale == RuoloGruppo.scopa)
             _bottoneCircolare(
               icona: Icons.podcasts,
-              etichetta: "LEADER",
+              etichetta: l10n.leader,
               colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
               onTap: _gestisciCanaleSpeciale,
             ),
 
           _bottoneCircolare(
             icona: Icons.warning_amber_rounded,
-            etichetta: "SOS",
+            etichetta: l10n.sos,
             colore: _sosAttivo ? Colors.red : Colors.grey,
             onTap: _gestisciSos,
           ),
 
           _bottoneCircolare(
             icona: Icons.close,
-            etichetta: "ESCI",
+            etichetta: l10n.exit,
             colore: Colors.white24,
             onTap: () => Navigator.pop(context),
           ),
@@ -196,6 +201,8 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   }
 
   Widget _costruisciSezioneParlante() {
+    final l10n = AppLocalizations.of(context)!;
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
@@ -208,7 +215,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
       child: Column(
         children: [
           Text(
-            _sosAttivo ? "🚨 SOS ATTIVO" : "🎤 STA PARLANDO",
+            _sosAttivo ? l10n.sosActive : l10n.speaking,
             style: TextStyle(
               fontSize: 14, 
               fontWeight: FontWeight.bold, 
@@ -217,7 +224,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           ),
           const SizedBox(height: 12),
           Text(
-            _sosAttivo ? "RICHIESTA ASSISTENZA" : "Nessuno",
+            _sosAttivo ? l10n.assistanceRequested : l10n.none,
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ],
@@ -226,7 +233,8 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   }
 
   Widget _costruisciListaPartecipanti(List<PartecipanteGruppo> partecipanti) {
-    if (partecipanti.isEmpty) return const Center(child: Text("Nessun partecipante"));
+    final l10n = AppLocalizations.of(context)!;
+    if (partecipanti.isEmpty) return Center(child: Text(l10n.noParticipants));
     
     return ListView.builder(
       itemCount: partecipanti.length,
@@ -236,7 +244,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           future: _servizioDatabase.leggiUtente(p.idUtente),
           builder: (context, uSnapshot) {
             final utente = uSnapshot.data;
-            final nome = utente?.nickname?.isNotEmpty == true ? utente!.nickname! : (utente?.nome ?? "...");
+            final nome = utente?.nickname?.isNotEmpty == true ? utente!.nickname! : (utente?.nome ?? l10n.loading);
 
             return ListTile(
               leading: Stack(

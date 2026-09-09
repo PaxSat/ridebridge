@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../servizi/servizio_gruppi.dart';
 
 /// Schermata per entrare in un gruppo tramite codice di accesso.
@@ -19,10 +20,11 @@ class _SchermataEntraGruppoState extends State<SchermataEntraGruppo> {
 
   /// Esegue la logica per entrare nel gruppo.
   Future<void> _gestisciEntraNelGruppo() async {
+    final l10n = AppLocalizations.of(context)!;
     final codice = _controlloreCodice.text.trim().toUpperCase();
 
     if (codice.isEmpty) {
-      setState(() => _errore = "Inserisci il codice del gruppo");
+      setState(() => _errore = l10n.enterCodeError);
       return;
     }
 
@@ -41,8 +43,8 @@ class _SchermataEntraGruppoState extends State<SchermataEntraGruppo> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Entrato nel gruppo con successo"),
+          SnackBar(
+            content: Text(l10n.joinSuccess),
             backgroundColor: Colors.green,
           ),
         );
@@ -59,26 +61,28 @@ class _SchermataEntraGruppoState extends State<SchermataEntraGruppo> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Entra nel Gruppo"),
+        title: Text(l10n.joinGroup),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Unisciti al Team",
-              style: TextStyle(
+            Text(
+              l10n.joinTeam,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              "Inserisci il codice di 6 caratteri ricevuto dal tuo leader.",
-              style: TextStyle(color: Colors.grey),
+            Text(
+              l10n.enterCodeInstructions,
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 32),
             TextField(
@@ -87,8 +91,8 @@ class _SchermataEntraGruppoState extends State<SchermataEntraGruppo> {
               textCapitalization: TextCapitalization.characters,
               maxLength: 6,
               decoration: InputDecoration(
-                labelText: "Codice Gruppo",
-                hintText: "es. RIDE24",
+                labelText: l10n.groupCode,
+                hintText: l10n.groupCodeHint,
                 errorText: _errore,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -128,9 +132,9 @@ class _SchermataEntraGruppoState extends State<SchermataEntraGruppo> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        "ENTRA NEL GRUPPO",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    : Text(
+                        l10n.joinGroup,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
               ),
             ),
