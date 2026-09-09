@@ -172,6 +172,29 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     );
   }
 
+  Widget _bottoneCircolare({
+    required IconData icona,
+    required String etichetta,
+    required Color colore,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(color: colore, shape: BoxShape.circle),
+            child: Icon(icona, color: Colors.white, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(etichetta, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
   Widget _costruisciSezioneParlante() {
     return Container(
       margin: const EdgeInsets.all(16),
@@ -255,29 +278,6 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           },
         );
       },
-    );
-  }
-
-  Widget _bottoneCircolare({
-    required IconData icona,
-    required String etichetta,
-    required Color colore,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: colore, shape: BoxShape.circle),
-            child: Icon(icona, color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(etichetta, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
-      ),
     );
   }
 

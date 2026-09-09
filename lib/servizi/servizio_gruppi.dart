@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/stato_audio.dart';
+import '../modelli/posizione_gps.dart';
 
 /// Gestisce le operazioni relative ai gruppi su Cloud Firestore.
 class ServizioGruppi {
@@ -390,6 +391,21 @@ class ServizioGruppi {
           });
     } catch (e) {
       debugPrint('Errore disattivazione emergenza: $e');
+    }
+  }
+
+  /// Aggiorna la posizione GPS in tempo reale.
+  Future<void> aggiornaPosizione(String idGruppo, String idUtente, PosizioneGps posizione) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('partecipanti')
+          .doc(idUtente)
+          .update({
+            'posizioneGps': posizione.aMappa(),
+          });
+    } catch (e) {
+      debugPrint('Errore aggiornamento posizione GPS: $e');
     }
   }
 }

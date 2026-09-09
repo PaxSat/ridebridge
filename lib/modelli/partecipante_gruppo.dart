@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'stato_audio.dart';
+import 'posizione_gps.dart';
 
 /// Enum che definisce i ruoli possibili all'interno di un gruppo.
 enum RuoloGruppo {
@@ -19,6 +20,7 @@ class PartecipanteGruppo {
   final bool online;
   final DateTime? ultimoAccesso;
   final StatoAudio? statoAudio;
+  final PosizioneGps? posizioneGps;
 
   PartecipanteGruppo({
     required this.idUtente,
@@ -29,6 +31,7 @@ class PartecipanteGruppo {
     this.online = false,
     this.ultimoAccesso,
     this.statoAudio,
+    this.posizioneGps,
   });
 
   /// Crea un oggetto [PartecipanteGruppo] da una mappa Firestore.
@@ -47,6 +50,9 @@ class PartecipanteGruppo {
       statoAudio: mappa['statoAudio'] != null 
           ? StatoAudio.daMappa(mappa['statoAudio'] as Map<String, dynamic>) 
           : null,
+      posizioneGps: mappa['posizioneGps'] != null
+          ? PosizioneGps.daMappa(mappa['posizioneGps'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -60,6 +66,7 @@ class PartecipanteGruppo {
       'online': online,
       'ultimoAccesso': ultimoAccesso != null ? Timestamp.fromDate(ultimoAccesso!) : null,
       'statoAudio': statoAudio?.aMappa(),
+      'posizioneGps': posizioneGps?.aMappa(),
     };
   }
 
@@ -72,6 +79,7 @@ class PartecipanteGruppo {
     bool? online,
     DateTime? ultimoAccesso,
     StatoAudio? statoAudio,
+    PosizioneGps? posizioneGps,
   }) {
     return PartecipanteGruppo(
       idUtente: idUtente,
@@ -82,6 +90,7 @@ class PartecipanteGruppo {
       online: online ?? this.online,
       ultimoAccesso: ultimoAccesso ?? this.ultimoAccesso,
       statoAudio: statoAudio ?? this.statoAudio,
+      posizioneGps: posizioneGps ?? this.posizioneGps,
     );
   }
 }
