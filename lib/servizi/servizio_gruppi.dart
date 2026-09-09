@@ -422,4 +422,23 @@ class ServizioGruppi {
       rethrow;
     }
   }
+
+  /// Cancella tutti i waypoint (svolte) registrati per un gruppo.
+  /// Utilizzato per pulire il database all'inizio o alla fine di una sessione.
+  Future<void> cancellaEventiPercorso(String idGruppo) async {
+    try {
+      final collection = _gruppiRef.doc(idGruppo).collection('eventi_percorso');
+      final snapshots = await collection.get();
+      
+      final batch = _firestore.batch();
+      for (var doc in snapshots.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+      debugPrint('Database svolte pulito per il gruppo: $idGruppo');
+    } catch (e) {
+      debugPrint('Errore durante la cancellazione degli eventi percorso: $e');
+    }
+  }
 }

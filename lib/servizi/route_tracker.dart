@@ -1,9 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../modelli/evento_percorso.dart';
 import 'location_evaluator.dart';
 
 /// Servizio per il monitoraggio e la registrazione del tragitto del gruppo.
 class RouteTracker {
   final _evaluator = LocationEvaluator();
+  final _firestore = FirebaseFirestore.instance;
   
   // Elenco dei waypoint (svolte) che la carovana deve ancora completare.
   final List<EventoPercorso> _waypointAttivi = [];
@@ -19,7 +22,8 @@ class RouteTracker {
     required double lon,
     required double bearingAttuale,
     required double turnThreshold,
-  }) {
+    bool registraSuFirestore = false,
+  }) async {
     if (_ultimoBearingLeader != null) {
       final tipoSvolta = rilevaSvolta(_ultimoBearingLeader!, bearingAttuale, turnThreshold);
       
@@ -34,6 +38,10 @@ class RouteTracker {
           timestamp: DateTime.now(),
         );
         _waypointAttivi.add(nuovoEvento);
+
+        if (registraSuFirestore) {
+          await registraWaypoint(idGruppo, nuovoEvento);
+        }
       }
     }
     _ultimoBearingLeader = bearingAttuale;
@@ -67,6 +75,19 @@ class RouteTracker {
     }
 
     return null;
+  }
+
+  /// Registra un punto di passaggio (waypoint) su Firestore.
+  Future<void> registraWaypoint(String idGruppo, EventoPercorso evento) async {
+    try {
+      await _firestore
+          .collection('gruppi')
+          .doc(idGruppo)
+          .collection('eventi_percorso')
+          .add(evento.aMappa());
+    } catch (e) {
+      debugPrint('Errore salvataggio waypoint su Firestore: $e');
+    }
   }
 
   /// Pulisce lo stato (es. fine uscita).

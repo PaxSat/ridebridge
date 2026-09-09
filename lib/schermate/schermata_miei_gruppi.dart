@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
+import '../modelli/partecipante_gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
 import 'schermata_dettaglio_gruppo.dart';
 import 'schermata_conversazione.dart';
@@ -29,6 +30,35 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
       final partecipante = await _servizioGruppi.ottieniRuoloUtente(gruppo.id, uid);
       
       if (partecipante != null && context.mounted) {
+        // Se l'utente è il Leader, chiediamo se vuole pulire il database delle svolte
+        if (partecipante.ruolo == RuoloGruppo.leader) {
+          final l10n = AppLocalizations.of(context)!;
+          final cancella = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(l10n.clearWaypointsTitle),
+              content: Text(l10n.clearWaypointsContent),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l10n.clearWaypointsKeep),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: Text(l10n.clearWaypointsConfirm),
+                ),
+              ],
+            ),
+          );
+
+          if (cancella == true) {
+            await _servizioGruppi.cancellaEventiPercorso(gruppo.id);
+          }
+        }
+
+        if (!context.mounted) return;
+
         Navigator.push(
           context,
           MaterialPageRoute(

@@ -278,6 +278,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToHome => 'Back to Home';
 
   @override
+  String get clearWaypointsTitle => 'New Session';
+
+  @override
+  String get clearWaypointsContent =>
+      'You are the Leader. Do you want to clear the history of previous turns to start a clean session?';
+
+  @override
+  String get clearWaypointsConfirm => 'CLEAR';
+
+  @override
+  String get clearWaypointsKeep => 'KEEP';
+
+  @override
   String get participantsLive => 'LIVE PARTICIPANTS';
 
   @override
@@ -303,6 +316,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noParticipants => 'No participants';
+
+  @override
+  String get caravanStatus => 'Caravan Status';
+
+  @override
+  String get viewCaravanStatus => 'CARAVAN STATUS';
 
   @override
   String get appInfo => 'App Info';

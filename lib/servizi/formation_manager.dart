@@ -16,6 +16,8 @@ enum StatoCarovana {
 class FormationManager {
   final _evaluator = LocationEvaluator();
   
+  LocationEvaluator get locationEvaluator => _evaluator;
+  
   /// Analizza la posizione di un utente e restituisce lo stato attuale ed eventuali avvisi.
   StatoCarovana verificaFormazione({
     required String idUtente,

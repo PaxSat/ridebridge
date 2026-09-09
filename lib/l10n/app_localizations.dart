@@ -602,6 +602,30 @@ abstract class AppLocalizations {
   /// **'Torna alla Home'**
   String get backToHome;
 
+  /// No description provided for @clearWaypointsTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Nuova Sessione'**
+  String get clearWaypointsTitle;
+
+  /// No description provided for @clearWaypointsContent.
+  ///
+  /// In it, this message translates to:
+  /// **'Sei il Leader. Vuoi cancellare lo storico delle svolte precedenti per iniziare una sessione pulita?'**
+  String get clearWaypointsContent;
+
+  /// No description provided for @clearWaypointsConfirm.
+  ///
+  /// In it, this message translates to:
+  /// **'CANCELLA'**
+  String get clearWaypointsConfirm;
+
+  /// No description provided for @clearWaypointsKeep.
+  ///
+  /// In it, this message translates to:
+  /// **'MANTIENI'**
+  String get clearWaypointsKeep;
+
   /// No description provided for @participantsLive.
   ///
   /// In it, this message translates to:
@@ -655,6 +679,18 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Nessun partecipante'**
   String get noParticipants;
+
+  /// No description provided for @caravanStatus.
+  ///
+  /// In it, this message translates to:
+  /// **'Stato Carovana'**
+  String get caravanStatus;
+
+  /// No description provided for @viewCaravanStatus.
+  ///
+  /// In it, this message translates to:
+  /// **'STATO CAROVANA'**
+  String get viewCaravanStatus;
 
   /// No description provided for @appInfo.
   ///

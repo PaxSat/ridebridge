@@ -7,6 +7,9 @@ class ServizioPosizioneFake {
   final _controller = StreamController<Map<String, PosizioneGps>>.broadcast();
   Timer? _timer;
 
+  // Storico posizioni del leader per far sì che gli altri seguano lo stesso percorso
+  final List<PosizioneGps> _bricioleLeader = [];
+
   // Stato iniziale (Roma, Colosseo circa)
   double _baseLat = 41.8902;
   double _baseLon = 12.4922;
@@ -19,74 +22,67 @@ class ServizioPosizioneFake {
   /// Avvia la simulazione di un tragitto.
   void avviaSimulazione() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    _bricioleLeader.clear();
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       // 1. Il Leader si muove in avanti
-      // Simuliamo una leggera oscillazione di direzione e una svolta ogni tanto
-      if (timer.tick % 15 == 0) {
-        _direzione = (_direzione + 90) % 360; // Svolta a destra ogni 30 secondi
+      if (timer.tick % 20 == 0) {
+        _direzione = (_direzione + 90) % 360; // Svolta a destra ogni 20 secondi
       } else {
-        _direzione += (math.Random().nextDouble() - 0.5) * 2; // Micro correzioni
+        _direzione += (math.Random().nextDouble() - 0.5) * 0.5; // Micro correzioni stabili
       }
 
-      // Calcolo spostamento (distanza = velocità * tempo)
-      const tempo = 2.0; // secondi
+      const tempo = 1.0; 
       final distanza = _velocita * tempo;
       
-      // Conversione approssimativa metri -> gradi (1 grado lat ~ 111km)
       final deltaLat = (distanza * math.cos(_direzione * math.pi / 180.0)) / 111320.0;
       final deltaLon = (distanza * math.sin(_direzione * math.pi / 180.0)) / (111320.0 * math.cos(_baseLat * math.pi / 180.0));
 
       _baseLat += deltaLat;
       _baseLon += deltaLon;
 
-      final ora = DateTime.now();
-
       final posLeader = PosizioneGps(
         latitudine: _baseLat,
         longitudine: _baseLon,
         direzione: _direzione,
         velocita: _velocita,
-        ultimoAggiornamento: ora,
+        ultimoAggiornamento: DateTime.now(),
       );
 
-      // 2. La Scopa segue a distanza (es. 500 metri indietro)
-      final distScopa = 500.0;
-      final latScopa = _baseLat - (distScopa * math.cos(_direzione * math.pi / 180.0)) / 111320.0;
-      final lonScopa = _baseLon - (distScopa * math.sin(_direzione * math.pi / 180.0)) / (111320.0 * math.cos(_baseLat * math.pi / 180.0));
+      _bricioleLeader.add(posLeader);
+      if (_bricioleLeader.length > 200) _bricioleLeader.removeAt(0);
 
-      final posScopa = PosizioneGps(
-        latitudine: latScopa,
-        longitudine: lonScopa,
-        direzione: _direzione,
-        velocita: _velocita,
-        ultimoAggiornamento: ora,
-      );
+      // 2. La Scopa segue le briciole (es. 20 secondi indietro -> ~276 metri)
+      final indexScopa = _bricioleLeader.length > 20 ? _bricioleLeader.length - 20 : 0;
+      final posScopa = _bricioleLeader[indexScopa].copiaCon(ultimoAggiornamento: DateTime.now());
 
-      // 3. Un Partecipante che cambia stato
-      double latPart = _baseLat;
-      double lonPart = _baseLon;
+      // 3. Un Partecipante che segue a metà strada tra leader e scopa
+      final indexPart = _bricioleLeader.length > 10 ? _bricioleLeader.length - 10 : 0;
       
-      if (timer.tick < 10) {
-        // In gruppo (tra leader e scopa)
-        latPart = (_baseLat + latScopa) / 2;
-        lonPart = (_baseLon + lonScopa) / 2;
-      } else if (timer.tick < 20) {
-        // Avanti al leader
-        latPart = _baseLat + (200 * math.cos(_direzione * math.pi / 180.0)) / 111320.0;
-        lonPart = _baseLon + (200 * math.sin(_direzione * math.pi / 180.0)) / (111320.0 * math.cos(_baseLat * math.pi / 180.0));
+      // Simuliamo gli stati del partecipante_test
+      PosizioneGps posPartecipante;
+      if (timer.tick > 60 && timer.tick < 80) {
+        // Avanti al leader (offset artificiale)
+        posPartecipante = PosizioneGps(
+          latitudine: _baseLat + 0.003, 
+          longitudine: _baseLon + 0.003,
+          direzione: _direzione,
+          velocita: _velocita,
+          ultimoAggiornamento: DateTime.now(),
+        );
+      } else if (timer.tick >= 80) {
+        // Fuori rotta
+        posPartecipante = PosizioneGps(
+          latitudine: _baseLat + 0.015,
+          longitudine: _baseLon + 0.015,
+          direzione: _direzione,
+          velocita: _velocita,
+          ultimoAggiornamento: DateTime.now(),
+        );
       } else {
-        // Fuori rotta (spostato lateralmente di 2km)
-        latPart = _baseLat + 0.02;
-        lonPart = _baseLon + 0.02;
+        // In gruppo (segue briciole)
+        posPartecipante = _bricioleLeader[indexPart].copiaCon(ultimoAggiornamento: DateTime.now());
       }
-
-      final posPartecipante = PosizioneGps(
-        latitudine: latPart,
-        longitudine: lonPart,
-        direzione: _direzione,
-        velocita: _velocita,
-        ultimoAggiornamento: ora,
-      );
 
       _controller.add({
         'leader': posLeader,

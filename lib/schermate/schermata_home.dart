@@ -8,9 +8,10 @@ import 'schermata_login.dart';
 import 'schermata_crea_gruppo.dart';
 import 'schermata_miei_gruppi.dart';
 import 'schermata_entra_gruppo.dart';
+import '../modelli/partecipante_gruppo.dart';
 import 'schermata_profilo.dart';
 import 'schermata_info.dart';
-import 'schermata_debug_georef.dart';
+import 'schermata_stato_carovana.dart';
 
 /// Schermata principale dell'applicazione dopo il login.
 class SchermataHome extends StatefulWidget {
@@ -183,7 +184,12 @@ class _SchermataHomeState extends State<SchermataHome> {
                     azione: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SchermataDebugGeoref()),
+                        MaterialPageRoute(
+                          builder: (context) => const SchermataStatoCarovana(
+                            mioRuolo: RuoloGruppo.leader,
+                            mioUid: "leader",
+                          ),
+                        ),
                       );
                     },
                   ),

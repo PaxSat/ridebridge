@@ -11,6 +11,7 @@ import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
 
 import 'schermata_dettaglio_membro.dart';
+import 'schermata_stato_carovana.dart';
 
 /// Schermata di dettaglio del gruppo con gestione ruoli e azioni specifiche.
 class SchermataDettaglioGruppo extends StatefulWidget {
@@ -237,6 +238,31 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                 Text(
                   _formattaRuolo(mioRuolo.ruolo),
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SchermataStatoCarovana(
+                            mioRuolo: mioRuolo.ruolo,
+                            mioUid: _uid!,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.location_on),
+                    label: Text(l10n.viewCaravanStatus),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
                 ),
               ],
             ),
