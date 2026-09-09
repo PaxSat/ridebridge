@@ -8,6 +8,7 @@ class StatoAudio {
   final bool emergenzaAttiva;
   final bool prioritaAudio;
   final bool staParlando;
+  final bool canaleSpecialeAttivo;
   final DateTime ultimoAggiornamento;
 
   StatoAudio({
@@ -17,6 +18,7 @@ class StatoAudio {
     this.emergenzaAttiva = false,
     this.prioritaAudio = false,
     this.staParlando = false,
+    this.canaleSpecialeAttivo = false,
     required this.ultimoAggiornamento,
   });
 
@@ -29,6 +31,7 @@ class StatoAudio {
       emergenzaAttiva: mappa['emergenzaAttiva'] ?? false,
       prioritaAudio: mappa['prioritaAudio'] ?? false,
       staParlando: mappa['staParlando'] ?? false,
+      canaleSpecialeAttivo: mappa['canaleSpecialeAttivo'] ?? false,
       ultimoAggiornamento: (mappa['ultimoAggiornamento'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -42,6 +45,7 @@ class StatoAudio {
       'emergenzaAttiva': emergenzaAttiva,
       'prioritaAudio': prioritaAudio,
       'staParlando': staParlando,
+      'canaleSpecialeAttivo': canaleSpecialeAttivo,
       'ultimoAggiornamento': Timestamp.fromDate(ultimoAggiornamento),
     };
   }
@@ -54,6 +58,7 @@ class StatoAudio {
     bool? emergenzaAttiva,
     bool? prioritaAudio,
     bool? staParlando,
+    bool? canaleSpecialeAttivo,
     DateTime? ultimoAggiornamento,
   }) {
     return StatoAudio(
@@ -63,6 +68,7 @@ class StatoAudio {
       emergenzaAttiva: emergenzaAttiva ?? this.emergenzaAttiva,
       prioritaAudio: prioritaAudio ?? this.prioritaAudio,
       staParlando: staParlando ?? this.staParlando,
+      canaleSpecialeAttivo: canaleSpecialeAttivo ?? this.canaleSpecialeAttivo,
       ultimoAggiornamento: ultimoAggiornamento ?? this.ultimoAggiornamento,
     );
   }
