@@ -9,6 +9,8 @@ import '../modelli/utente.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
 
+import 'schermata_dettaglio_membro.dart';
+
 /// Schermata di dettaglio del gruppo con gestione ruoli e azioni specifiche.
 class SchermataDettaglioGruppo extends StatefulWidget {
   final Gruppo gruppo;
@@ -104,7 +106,8 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
     if (conferma == true && _uid != null) {
       try {
         await _servizioGruppi.esciDalGruppo(widget.gruppo.id, _uid);
-        if (mounted) Navigator.pop(context);
+        if (!mounted) return;
+        Navigator.pop(context);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -133,7 +136,8 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
     if (conferma == true && _uid != null) {
       try {
         await _servizioGruppi.eliminaGruppo(widget.gruppo.id, _uid);
-        if (mounted) Navigator.pop(context);
+        if (!mounted) return;
+        Navigator.pop(context);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -260,19 +264,11 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                 }
                 final partecipanti = snapshot.data ?? [];
                 
-                // Determiniamo il ruolo attuale dell'utente dal flusso real-time
-                final partecipanteCorrente = partecipanti.firstWhere(
-                  (p) => p.idUtente == _uid,
-                  orElse: () => mioRuolo, // fallback al valore iniziale
-                );
-                final bool eLeaderCorrente = partecipanteCorrente.ruolo == RuoloGruppo.leader;
-
                 return ListView.separated(
                   itemCount: partecipanti.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final p = partecipanti[index];
-                    final bool eMeStesso = p.idUtente == _uid;
 
                     return FutureBuilder<Utente?>(
                       future: _servizioDatabase.leggiUtente(p.idUtente),
@@ -283,6 +279,17 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                             : (utente?.nome ?? "Caricamento...");
                         
                         return ListTile(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SchermataDettaglioMembro(
+                                  idGruppo: widget.gruppo.id,
+                                  idUtente: p.idUtente,
+                                ),
+                              ),
+                            );
+                          },
                           leading: Stack(
                             children: [
                               CircleAvatar(
@@ -347,77 +354,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                               ),
                             ],
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              p.online 
-                                ? const Text("🟢", style: TextStyle(fontSize: 10))
-                                : const Text("⚫", style: TextStyle(fontSize: 10)),
-                              if (eLeaderCorrente && !eMeStesso)
-                                PopupMenuButton<String>(
-                                  onSelected: (valore) async {
-                                    try {
-                                      if (valore == 'scopa') {
-                                        if (p.ruolo == RuoloGruppo.scopa) {
-                                          await _servizioGruppi.rimuoviScopa(widget.gruppo.id, _uid!, p.idUtente);
-                                        } else {
-                                          await _servizioGruppi.assegnaScopa(widget.gruppo.id, _uid!, p.idUtente);
-                                        }
-                                      } else if (valore == 'leader') {
-                                        final conferma = await showDialog<bool>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text("Trasferisci Comando"),
-                                            content: Text("Vuoi davvero nominare $nomePartecipante nuovo Leader?"),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("ANNULLA")),
-                                              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("CONFERMA")),
-                                            ],
-                                          ),
-                                        );
-                                        if (conferma == true) {
-                                          await _servizioGruppi.cambiaLeader(widget.gruppo.id, _uid!, p.idUtente);
-                                        }
-                                      } else if (valore == 'mic') {
-                                        if (p.microfonoConsentito) {
-                                          await _servizioGruppi.disabilitaMicrofonoPartecipante(widget.gruppo.id, _uid!, p.idUtente);
-                                        } else {
-                                          await _servizioGruppi.abilitaMicrofonoPartecipante(widget.gruppo.id, _uid!, p.idUtente);
-                                        }
-                                      } else if (valore == 'audio') {
-                                        if (p.audioConsentito) {
-                                          await _servizioGruppi.disabilitaAudioPartecipante(widget.gruppo.id, _uid!, p.idUtente);
-                                        } else {
-                                          await _servizioGruppi.abilitaAudioPartecipante(widget.gruppo.id, _uid!, p.idUtente);
-                                        }
-                                      }
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                                      }
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    PopupMenuItem(
-                                      value: 'scopa',
-                                      child: Text(p.ruolo == RuoloGruppo.scopa ? "Rimuovi Scopa" : "Nomina Scopa"),
-                                    ),
-                                    PopupMenuItem(
-                                      value: 'mic',
-                                      child: Text(p.microfonoConsentito ? "Disabilita Microfono" : "Abilita Microfono"),
-                                    ),
-                                    PopupMenuItem(
-                                      value: 'audio',
-                                      child: Text(p.audioConsentito ? "Disabilita Audio" : "Abilita Audio"),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'leader',
-                                      child: Text("Promuovi a Leader"),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                         );
                       },
                     );

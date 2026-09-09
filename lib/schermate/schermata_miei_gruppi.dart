@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../modelli/gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
 import 'schermata_dettaglio_gruppo.dart';
+import 'schermata_conversazione.dart';
 
 /// Schermata che mostra l'elenco dei gruppi a cui l'utente appartiene.
 class SchermataMieiGruppi extends StatefulWidget {
@@ -15,6 +16,35 @@ class SchermataMieiGruppi extends StatefulWidget {
 class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
   final ServizioGruppi _servizioGruppi = ServizioGruppi();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
+
+  /// Gestisce l'ingresso nella conversazione live.
+  Future<void> _partecipaLive(BuildContext context, Gruppo gruppo) async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    try {
+      // Recuperiamo il ruolo attuale dell'utente nel gruppo
+      final partecipante = await _servizioGruppi.ottieniRuoloUtente(gruppo.id, uid);
+      
+      if (partecipante != null && context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SchermataConversazione(
+              gruppo: gruppo,
+              mioRuoloIniziale: partecipante.ruolo,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore durante l'accesso alla live: $e")),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +110,15 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   subtitle: Text("Codice: ${gruppo.codiceAccesso}"),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  trailing: ElevatedButton(
+                    onPressed: () => _partecipaLive(context, gruppo),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: const Text("PARTECIPA", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
                   onTap: () async {
                     await Navigator.push(
                       context,
