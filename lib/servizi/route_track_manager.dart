@@ -90,4 +90,25 @@ class RouteTrackManager {
   double lunghezzaPercorso() {
     return _track.isNotEmpty ? _track.last.distanzaProgressiva : 0.0;
   }
+
+  /// Esegue la Garbage Collection della traccia.
+  /// Rimuove i punti superati da tutta la carovana oltre una distanza di buffer.
+  void pulisciPuntiSuperati(int tailIndex, {double bufferMeters = 1000.0}) {
+    if (_track.isEmpty || tailIndex <= 0) return;
+
+    // Troviamo il punto corrispondente alla coda tecnica
+    final safeTailIndex = tailIndex.clamp(0, _track.length - 1);
+    final progressivoCoda = _track[safeTailIndex].distanzaProgressiva;
+
+    // Rimuoviamo i punti che sono:
+    // 1. Dietro l'indice della coda (index < tailIndex)
+    // 2. Più lontani del buffer rispetto al progresso della coda
+    _track.removeWhere((p) {
+      final indexPunto = _track.indexOf(p);
+      if (indexPunto >= safeTailIndex) return false;
+
+      final distacco = progressivoCoda - p.distanzaProgressiva;
+      return distacco > bufferMeters;
+    });
+  }
 }

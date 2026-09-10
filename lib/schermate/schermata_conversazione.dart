@@ -7,14 +7,12 @@ import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
+import '../modelli/posizione_gps.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
 import '../servizi/formation_manager.dart';
-
-import 'schermata_stato_carovana.dart';
-
-import '../modelli/posizione_gps.dart';
 import '../servizi/location_evaluator.dart';
+import 'schermata_stato_carovana.dart';
 
 /// Schermata principale dell'interfono live.
 class SchermataConversazione extends StatefulWidget {
@@ -36,6 +34,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   final ServizioDatabase _servizioDatabase = ServizioDatabase();
   final LocationEvaluator _evaluator = LocationEvaluator();
   final FormationManager _formationManager = FormationManager();
+  
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   bool _canaleSpecialeAttivo = false;
@@ -142,6 +141,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
             _mioStatoLocale = me;
             _sosAttivo = me.statoAudio?.emergenzaAttiva ?? false;
             _canaleSpecialeAttivo = me.statoAudio?.canaleSpecialeAttivo ?? false;
+            final miaPos = me.posizioneGps;
 
             leader = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.leader);
             _posLeader = leader.posizioneGps;
@@ -167,7 +167,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               }
             }
 
-            _mioStatoCarovana = statiCarovanaMembri[_uid] ?? StatoCarovana.inGroup;
+            _mioStatoCarovana = statiCarovanaMembri[_uid!] ?? StatoCarovana.inGroup;
           } catch (_) {}
         }
 

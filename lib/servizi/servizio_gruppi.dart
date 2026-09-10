@@ -427,18 +427,59 @@ class ServizioGruppi {
   /// Utilizzato per pulire il database all'inizio o alla fine di una sessione.
   Future<void> cancellaEventiPercorso(String idGruppo) async {
     try {
-      final collection = _gruppiRef.doc(idGruppo).collection('eventi_percorso');
-      final snapshots = await collection.get();
+      // Pulizia V1
+      final collectionV1 = _gruppiRef.doc(idGruppo).collection('eventi_percorso');
+      final snapshotsV1 = await collectionV1.get();
       
       final batch = _firestore.batch();
-      for (var doc in snapshots.docs) {
+      for (var doc in snapshotsV1.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Pulizia V2
+      final collectionV2 = _gruppiRef.doc(idGruppo).collection('route_points');
+      final snapshotsV2 = await collectionV2.get();
+      for (var doc in snapshotsV2.docs) {
         batch.delete(doc.reference);
       }
       
       await batch.commit();
-      debugPrint('Database svolte pulito per il gruppo: $idGruppo');
+      debugPrint('Database svolte (V1+V2) pulito per il gruppo: $idGruppo');
     } catch (e) {
       debugPrint('Errore durante la cancellazione degli eventi percorso: $e');
+    }
+  }
+
+  /// Elimina i punti della traccia superati da tutta la carovana su Firestore (GC V2).
+  Future<void> pulisciPuntiFirestore(String idGruppo, int tailIndex, {int safeBuffer = 50}) async {
+    try {
+      final collection = _gruppiRef.doc(idGruppo).collection('route_points');
+      // Recuperiamo i punti con indice inferiore alla coda tecnica meno un buffer di sicurezza
+      final limitIndex = tailIndex - safeBuffer;
+      if (limitIndex <= 0) return;
+
+      final snapshots = await collection
+          .where('timestamp', isLessThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(minutes: 5))))
+          .get();
+      
+      // Nota: Firestore non supporta query dirette su indici progressivi se non indicizzati.
+      // Per ora usiamo una logica basata sul timestamp dei punti più vecchi.
+      // In produzione si consiglia di aggiungere un campo 'index' ai RoutePoint.
+      
+      final batch = _firestore.batch();
+      int count = 0;
+      for (var doc in snapshots.docs) {
+        batch.delete(doc.reference);
+        count++;
+        if (count >= 450) break; // Limite batch Firestore
+      }
+      
+      if (count > 0) {
+        await batch.commit();
+        debugPrint('GC V2: Eliminati $count punti obsoleti.');
+      }
+    } catch (e) {
+      debugPrint('Errore Garbage Collection Firestore: $e');
     }
   }
 }

@@ -3,17 +3,29 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
+import '../modelli/route_point.dart';
+import '../modelli/route_progress.dart';
+import '../modelli/tail_state.dart';
+import '../modelli/partecipante_gruppo.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/configurazione_gruppo.dart';
-import '../modelli/partecipante_gruppo.dart';
 import '../modelli/avviso_carovana.dart';
 import '../servizi/servizio_posizione_fake.dart';
 import '../servizi/route_tracker.dart';
 import '../servizi/formation_manager.dart';
 import '../servizi/waypoint_manager.dart';
+import '../servizi/snake_formation_manager.dart';
+import '../modelli/partecipante_gruppo.dart';
+import '../modelli/posizione_gps.dart';
+import '../modelli/configurazione_gruppo.dart';
+import '../modelli/avviso_carovana.dart';
+import '../servizi/servizio_posizione_fake.dart';
+import '../servizi/route_tracker.dart';
+import '../servizi/formation_manager.dart';
+import '../servizi/waypoint_manager.dart';
+import '../servizi/snake_formation_manager.dart';
 
 /// Schermata per monitorare lo stato della carovana e la navigazione.
-/// Sostituisce la precedente schermata di debug.
 class SchermataStatoCarovana extends StatefulWidget {
   final RuoloGruppo mioRuolo;
   final String mioUid;
