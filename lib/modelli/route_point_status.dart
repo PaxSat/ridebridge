@@ -9,21 +9,23 @@ enum RoutePointLifecycle {
 
 /// Rappresenta lo stato dinamico di un [RoutePoint].
 class RoutePointStatus {
-  final String routePointId;
-  final Set<String> utentiPassati;
+  final String routePointId; // UUID tecnico
+  final int sequenceId; // Riferimento topologico primario
   final Map<String, DateTime> passaggiUtenti; // Mappa UID -> Timestamp passaggio
-  final bool tuttiPassati;
-  final DateTime? timestampUltimoPassaggio;
   final RoutePointLifecycle lifecycle;
 
   RoutePointStatus({
     required this.routePointId,
-    this.utentiPassati = const {},
+    required this.sequenceId,
     this.passaggiUtenti = const {},
-    this.tuttiPassati = false,
-    this.timestampUltimoPassaggio,
     this.lifecycle = RoutePointLifecycle.active,
   });
+
+  /// Verifica se un insieme di utenti ha superato il punto.
+  bool sonoTuttiPassati(List<String> activeUids) {
+    if (activeUids.isEmpty) return false;
+    return activeUids.every((uid) => passaggiUtenti.containsKey(uid));
+  }
 
   /// Crea un oggetto [RoutePointStatus] da una mappa.
   factory RoutePointStatus.daMappa(Map<String, dynamic> mappa) {
@@ -34,10 +36,8 @@ class RoutePointStatus {
 
     return RoutePointStatus(
       routePointId: mappa['routePointId'] ?? '',
-      utentiPassati: Set<String>.from(mappa['utentiPassati'] ?? []),
+      sequenceId: mappa['sequenceId'] ?? 0,
       passaggiUtenti: passaggiConvertiti,
-      tuttiPassati: mappa['tuttiPassati'] ?? false,
-      timestampUltimoPassaggio: (mappa['timestampUltimoPassaggio'] as Timestamp?)?.toDate(),
       lifecycle: RoutePointLifecycle.values.firstWhere(
         (e) => e.name == mappa['lifecycle'],
         orElse: () => RoutePointLifecycle.active,
@@ -53,12 +53,8 @@ class RoutePointStatus {
 
     return {
       'routePointId': routePointId,
-      'utentiPassati': utentiPassati.toList(),
+      'sequenceId': sequenceId,
       'passaggiUtenti': passaggiFirestore,
-      'tuttiPassati': tuttiPassati,
-      'timestampUltimoPassaggio': timestampUltimoPassaggio != null 
-          ? Timestamp.fromDate(timestampUltimoPassaggio!) 
-          : null,
       'lifecycle': lifecycle.name,
     };
   }
@@ -66,18 +62,14 @@ class RoutePointStatus {
   /// Crea una copia dello stato con campi modificati.
   RoutePointStatus copiaCon({
     String? routePointId,
-    Set<String>? utentiPassati,
+    int? sequenceId,
     Map<String, DateTime>? passaggiUtenti,
-    bool? tuttiPassati,
-    DateTime? timestampUltimoPassaggio,
     RoutePointLifecycle? lifecycle,
   }) {
     return RoutePointStatus(
       routePointId: routePointId ?? this.routePointId,
-      utentiPassati: utentiPassati ?? this.utentiPassati,
+      sequenceId: sequenceId ?? this.sequenceId,
       passaggiUtenti: passaggiUtenti ?? this.passaggiUtenti,
-      tuttiPassati: tuttiPassati ?? this.tuttiPassati,
-      timestampUltimoPassaggio: timestampUltimoPassaggio ?? this.timestampUltimoPassaggio,
       lifecycle: lifecycle ?? this.lifecycle,
     );
   }

@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Rappresenta un punto immutabile della traccia generata dal Leader.
 class RoutePoint {
-  final String id;
+  final String id; // UUID tecnico
+  final int sequenceId; // Identificativo topologico progressivo
   final double latitudine;
   final double longitudine;
   final DateTime timestamp;
@@ -12,6 +13,7 @@ class RoutePoint {
 
   RoutePoint({
     required this.id,
+    required this.sequenceId,
     required this.latitudine,
     required this.longitudine,
     required this.timestamp,
@@ -24,6 +26,7 @@ class RoutePoint {
   factory RoutePoint.daMappa(Map<String, dynamic> mappa, String documentoId) {
     return RoutePoint(
       id: documentoId,
+      sequenceId: mappa['sequenceId'] ?? 0,
       latitudine: (mappa['latitudine'] as num).toDouble(),
       longitudine: (mappa['longitudine'] as num).toDouble(),
       timestamp: (mappa['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -36,6 +39,7 @@ class RoutePoint {
   /// Converte l'oggetto [RoutePoint] in una mappa per Firestore.
   Map<String, dynamic> aMappa() {
     return {
+      'sequenceId': sequenceId,
       'latitudine': latitudine,
       'longitudine': longitudine,
       'timestamp': Timestamp.fromDate(timestamp),
@@ -48,6 +52,7 @@ class RoutePoint {
   /// Crea una copia del punto con alcuni campi modificati.
   RoutePoint copiaCon({
     String? id,
+    int? sequenceId,
     double? latitudine,
     double? longitudine,
     DateTime? timestamp,
@@ -57,6 +62,7 @@ class RoutePoint {
   }) {
     return RoutePoint(
       id: id ?? this.id,
+      sequenceId: sequenceId ?? this.sequenceId,
       latitudine: latitudine ?? this.latitudine,
       longitudine: longitudine ?? this.longitudine,
       timestamp: timestamp ?? this.timestamp,

@@ -141,7 +141,6 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
             _mioStatoLocale = me;
             _sosAttivo = me.statoAudio?.emergenzaAttiva ?? false;
             _canaleSpecialeAttivo = me.statoAudio?.canaleSpecialeAttivo ?? false;
-            final miaPos = me.posizioneGps;
 
             leader = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.leader);
             _posLeader = leader.posizioneGps;
@@ -167,7 +166,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               }
             }
 
-            _mioStatoCarovana = statiCarovanaMembri[_uid!] ?? StatoCarovana.inGroup;
+            _mioStatoCarovana = statiCarovanaMembri[_uid] ?? StatoCarovana.inGroup;
           } catch (_) {}
         }
 

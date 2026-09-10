@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'posizione_gps.dart';
-import '../servizi/snake_formation_manager.dart'; // Per EngineState
+import 'engine_state.dart';
 
 /// Rappresenta lo stato di progressione di un partecipante lungo la traccia del Leader.
 /// Filosofia: "Walking on the Snake".
@@ -8,9 +8,9 @@ class RouteProgress {
   final String uid;
   
   // Stato progressione sequenziale
-  final int lastValidatedIndex;
-  final String? lastValidatedId;
-  final int nextTargetIndex;
+  final int lastValidatedIndex; // sequenceId del RoutePoint
+  final String? lastValidatedId; // UUID tecnico
+  final int nextTargetIndex; // sequenceId del prossimo obiettivo
   final String? nextTargetId;
 
   final double distanzaDalLastPoint;

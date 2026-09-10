@@ -13,83 +13,78 @@ void main() {
     track = RouteTrackManager();
   });
 
-  group('TailState & GC Tests', () {
-    test('Calcolo TailState con Scopa affidabile', () {
-      final traccia = List.generate(10, (i) => RoutePoint(id: 'p$i', latitudine: i * 0.01, longitudine: 0.0, timestamp: DateTime.now()));
+  group('TailState & GC V2 Tests', () {
+    test('Calcolo TailState basato su progressione', () {
+      final traccia = List.generate(10, (i) => RoutePoint(
+        id: 'p$i', 
+        sequenceId: i, 
+        latitudine: i * 0.01, 
+        longitudine: 0.0, 
+        timestamp: DateTime.now()
+      ));
       
-      // Scopa a P2
+      // Rider 1 a P2
       snake.aggiornaPosizionePartecipante(
-        uid: 'scopa_uid',
+        uid: 'user1',
         pos: PosizioneGps(latitudine: 0.02, longitudine: 0.0, ultimoAggiornamento: DateTime.now()),
         traccia: traccia,
-        leaderIndex: 9,
+        leaderSequenceId: 9,
       );
 
-      // Partecipante a P5
+      // Rider 2 a P5
       snake.aggiornaPosizionePartecipante(
-        uid: 'user_uid',
+        uid: 'user2',
         pos: PosizioneGps(latitudine: 0.05, longitudine: 0.0, ultimoAggiornamento: DateTime.now()),
         traccia: traccia,
-        leaderIndex: 9,
+        leaderSequenceId: 9,
       );
 
-      final tail = snake.calcolaTailState('scopa_uid');
-      expect(tail.tailUid, 'scopa_uid');
+      final tail = snake.calcolaTailState();
       expect(tail.tailIndex, 2);
-      expect(tail.isScopaReliable, true);
     });
 
-    test('Fallback TailState su partecipante se Scopa inaffidabile', () {
-      final traccia = List.generate(10, (i) => RoutePoint(id: 'p$i', latitudine: i * 0.01, longitudine: 0.0, timestamp: DateTime.now()));
+    test('Fallback TailState su partecipante attivo', () {
+      final traccia = List.generate(10, (i) => RoutePoint(
+        id: 'p$i', 
+        sequenceId: i, 
+        latitudine: i * 0.01, 
+        longitudine: 0.0, 
+        timestamp: DateTime.now()
+      ));
       
-      // Scopa con confidence bassissima (inaffidabile)
+      // Rider 1 inaffidabile (vecchio)
       snake.aggiornaPosizionePartecipante(
-        uid: 'scopa_uid',
-        pos: PosizioneGps(latitudine: 0.9, longitudine: 0.9, ultimoAggiornamento: DateTime.now()), // Lontano
+        uid: 'lost',
+        pos: PosizioneGps(latitudine: 0.9, longitudine: 0.9, ultimoAggiornamento: DateTime.now().subtract(const Duration(minutes: 5))), 
         traccia: traccia,
-        leaderIndex: 9,
+        leaderSequenceId: 9,
       );
 
-      // Partecipante affidabile a P3
+      // Rider 2 affidabile a P3
       snake.aggiornaPosizionePartecipante(
-        uid: 'user_uid',
+        uid: 'ok',
         pos: PosizioneGps(latitudine: 0.03, longitudine: 0.0, ultimoAggiornamento: DateTime.now()),
         traccia: traccia,
-        leaderIndex: 9,
+        leaderSequenceId: 9,
       );
 
-      final tail = snake.calcolaTailState('scopa_uid');
-      expect(tail.tailUid, 'user_uid');
+      final tail = snake.calcolaTailState();
+      expect(tail.tailUid, 'ok');
       expect(tail.tailIndex, 3);
-      expect(tail.isScopaReliable, false);
     });
 
-    test('Garbage Collection con buffer distanza', () {
-      // Creiamo traccia lunga 3km (30 punti da 100m)
-      for (int i = 0; i < 30; i++) {
-        track.aggiungiPosizioneLeader(PosizioneGps(
-          latitudine: i * 0.001, // ~111m per punto
-          longitudine: 0.0,
-          ultimoAggiornamento: DateTime.now().add(Duration(seconds: i * 5)),
-        ));
-      }
-
-      final tracciaCompleta = track.ottieniRoutePoints();
-      expect(tracciaCompleta.length, 30);
-
-      // Coda tecnica a P20 (~2220m)
-      // Vogliamo pulire con buffer 1000m -> Punti prima di 1220m (circa P11)
-      track.pulisciPuntiSuperati(20, bufferMeters: 1000.0);
-
-      final tracciaPulita = track.ottieniRoutePoints();
+    test('Garbage Collection basata su transito completato', () {
+      final p0 = track.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: DateTime.now()))!;
       
-      // Verifica che i punti recenti siano rimasti
-      expect(tracciaPulita.last.id, tracciaCompleta.last.id);
-      expect(tracciaPulita.any((p) => tracciaCompleta.indexOf(p) == 20), true);
-      
-      // Verifica che i punti vecchi siano spariti
-      expect(tracciaPulita.any((p) => tracciaCompleta.indexOf(p) == 0), false);
-      expect(tracciaPulita.length, lessThan(30));
+      expect(track.ottieniRoutePoints().length, 1);
+
+      // GC con p0 non completato (lista vuota)
+      track.garbageCollection(completedSequenceIds: []);
+      expect(track.ottieniRoutePoints().length, 1);
+
+      // GC con p0 completato
+      track.garbageCollection(completedSequenceIds: [p0.sequenceId]);
+      expect(track.ottieniRoutePoints().length, 0);
     });
   });
 }

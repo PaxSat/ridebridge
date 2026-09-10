@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
-import '../modelli/partecipante_gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
 import 'schermata_dettaglio_gruppo.dart';
 import 'schermata_conversazione.dart';

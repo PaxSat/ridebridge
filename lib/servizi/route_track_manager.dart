@@ -9,6 +9,7 @@ class RouteTrackManager {
   final _uuid = const Uuid();
   
   final List<RoutePoint> _track = [];
+  int _nextSequenceId = 0;
   
   // Configurazione soglie
   double sogliaDistanzaMeters;
@@ -22,14 +23,17 @@ class RouteTrackManager {
   /// Pulisce l'intera traccia corrente.
   void reset() {
     _track.clear();
+    _nextSequenceId = 0;
   }
 
   /// Analizza una nuova posizione del leader e decide se generare un nuovo RoutePoint.
   /// Ritorna il nuovo [RoutePoint] se creato, altrimenti null.
+  /// Logica V2: distanza >= 25m AND tempo >= 4s.
   RoutePoint? aggiungiPosizioneLeader(PosizioneGps pos) {
     if (_track.isEmpty) {
       final primoPunto = RoutePoint(
         id: _uuid.v4(),
+        sequenceId: _nextSequenceId++,
         latitudine: pos.latitudine,
         longitudine: pos.longitudine,
         timestamp: pos.ultimoAggiornamento,
@@ -52,8 +56,8 @@ class RouteTrackManager {
     // Calcolo tempo trascorso dall'ultimo punto
     final tempoTrascorso = pos.ultimoAggiornamento.difference(ultimo.timestamp);
 
-    // Verifichiamo se le soglie sono state superate
-    if (distanza >= sogliaDistanzaMeters || tempoTrascorso >= sogliaTempo) {
+    // Verifichiamo se ENTRAMBE le soglie sono state superate (CONDIZIONE AND)
+    if (distanza >= sogliaDistanzaMeters && tempoTrascorso >= sogliaTempo) {
       // Calcolo bearing reale del segmento (P-1 -> P)
       final bearingSegmento = _evaluator.calcolaBearing(
         ultimo.latitudine, ultimo.longitudine,
@@ -62,6 +66,7 @@ class RouteTrackManager {
 
       final nuovoPunto = RoutePoint(
         id: _uuid.v4(),
+        sequenceId: _nextSequenceId++,
         latitudine: pos.latitudine,
         longitudine: pos.longitudine,
         timestamp: pos.ultimoAggiornamento,
@@ -74,6 +79,32 @@ class RouteTrackManager {
     }
 
     return null;
+  }
+
+  /// Esegue la Garbage Collection della traccia basata sulla progressione topologica.
+  /// Rimuove i punti che hanno completato il ciclo di vita (superati da tutti).
+  void garbageCollection({
+    required List<int> completedSequenceIds,
+    int? tailSequenceId,
+    double? minSafetyBufferMeters,
+  }) {
+    if (_track.isEmpty) return;
+
+    _track.removeWhere((p) {
+      // Regola primaria: deve essere completato (tutti passati) basato sul sequenceId
+      if (!completedSequenceIds.contains(p.sequenceId)) return false;
+
+      // Regola secondaria (opzionale): deve essere strettamente dietro la coda tecnica attuale
+      if (tailSequenceId != null && p.sequenceId >= tailSequenceId) return false;
+
+      // Regola terziaria (opzionale): buffer metrico rispetto alla testa della carovana
+      if (minSafetyBufferMeters != null) {
+        final distaccoDallaTesta = _track.last.distanzaProgressiva - p.distanzaProgressiva;
+        if (distaccoDallaTesta < minSafetyBufferMeters) return false;
+      }
+
+      return true;
+    });
   }
 
   /// Restituisce tutti i punti della traccia registrati finora.
@@ -89,26 +120,5 @@ class RouteTrackManager {
   /// Restituisce la lunghezza totale della traccia percorsa (odometro).
   double lunghezzaPercorso() {
     return _track.isNotEmpty ? _track.last.distanzaProgressiva : 0.0;
-  }
-
-  /// Esegue la Garbage Collection della traccia.
-  /// Rimuove i punti superati da tutta la carovana oltre una distanza di buffer.
-  void pulisciPuntiSuperati(int tailIndex, {double bufferMeters = 1000.0}) {
-    if (_track.isEmpty || tailIndex <= 0) return;
-
-    // Troviamo il punto corrispondente alla coda tecnica
-    final safeTailIndex = tailIndex.clamp(0, _track.length - 1);
-    final progressivoCoda = _track[safeTailIndex].distanzaProgressiva;
-
-    // Rimuoviamo i punti che sono:
-    // 1. Dietro l'indice della coda (index < tailIndex)
-    // 2. Più lontani del buffer rispetto al progresso della coda
-    _track.removeWhere((p) {
-      final indexPunto = _track.indexOf(p);
-      if (indexPunto >= safeTailIndex) return false;
-
-      final distacco = progressivoCoda - p.distanzaProgressiva;
-      return distacco > bufferMeters;
-    });
   }
 }
