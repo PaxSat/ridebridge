@@ -8,12 +8,11 @@ import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
 import '../modelli/posizione_gps.dart';
-import '../modelli/engine_state.dart';
 import '../modelli/stato_carovana.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
-import '../servizi/formation_manager.dart';
 import '../servizi/location_evaluator.dart';
+import '../servizi/snake_formation_manager.dart';
 import 'schermata_stato_carovana.dart';
 
 /// Schermata principale dell'interfono live.
@@ -35,7 +34,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   final ServizioGruppi _servizioGruppi = ServizioGruppi();
   final ServizioDatabase _servizioDatabase = ServizioDatabase();
   final LocationEvaluator _evaluator = LocationEvaluator();
-  final FormationManager _formationManager = FormationManager();
+  final SnakeFormationManager _snakeManager = SnakeFormationManager();
   
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -135,7 +134,6 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
 
         // Sincronizziamo lo stato locale con i dati Firestore per l'utente corrente
         PartecipanteGruppo? leader;
-        PartecipanteGruppo? scopa;
 
         if (_uid != null && partecipanti.isNotEmpty) {
           try {
@@ -147,13 +145,6 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
             leader = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.leader);
             _posLeader = leader.posizioneGps;
             
-            try {
-              scopa = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.scopa);
-            } catch (_) {}
-
-            // CALCOLO STATO CAROVANA V2 (Unica Verità)
-            final leaderProg = statiCarovanaMembri['leader'] != null ? 0.0 : 0.0; // Placeholder for logic below
-            // Il calcolo reale viene fatto nel ciclo per ogni partecipante
             final scopaProgress = partecipanti.any((p) => p.ruolo == RuoloGruppo.scopa) 
                 ? _snakeManager.ottieniProgress(partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.scopa).idUtente)?.routeProgress 
                 : null;

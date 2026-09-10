@@ -35,11 +35,9 @@ class FormationManager {
       }
     }
 
-    if (tipo == null) return null;
-
     return AvvisoCarovana(
       idUtente: idUtente,
-      tipo: tipo,
+      tipo: tipo!,
       timestamp: DateTime.now(),
       messaggio: messaggio,
     );

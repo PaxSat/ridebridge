@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
@@ -7,12 +6,10 @@ import '../modelli/posizione_gps.dart';
 import '../modelli/configurazione_gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/avviso_carovana.dart';
-import '../modelli/route_point.dart';
 import '../modelli/route_progress.dart';
 import '../modelli/engine_state.dart';
 import '../modelli/tail_state.dart';
 import '../servizi/servizio_posizione_fake.dart';
-import '../servizi/location_evaluator.dart';
 import '../servizi/formation_manager.dart';
 import '../servizi/waypoint_manager.dart';
 import '../servizi/snake_formation_manager.dart';
@@ -39,7 +36,6 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   final _snakeManager = SnakeFormationManager();
   final _formation = FormationManager();
   final _waypointManager = WaypointManager();
-  final _evaluator = LocationEvaluator();
   final _config = ConfigurazioneGruppo();
 
   Map<String, PosizioneGps> _ultimePosizioni = {};
@@ -83,27 +79,23 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       _progressi[uid] = progress;
     });
 
-    // 3. Calcolo TailState e GC
+    // 3. Calcolo TailState
     _tailState = _snakeManager.calcolaTailState();
-    // In questa versione demo puliamo i punti completati basandoci sul TailState per semplicità di simulazione
-    // (Nel motore reale verrebbe usata la lista degli ID completati da Firestore)
 
     // 4. Analisi stati e messaggi
     final leaderProgress = _progressi['leader']?.routeProgress ?? 0.0;
+    final scopaProgress = _progressi['scopa']?.routeProgress;
 
     _ultimePosizioni.forEach((uid, pos) {
       final p = _progressi[uid]!;
       
-      final stato = _formation.verificaFormazione(
-        idUtente: uid,
-        idLeader: "leader",
-        idScopa: "scopa",
-        posizioneUtente: pos,
-        posizioneLeader: leaderPos,
-        posizioneScopa: _ultimePosizioni['scopa'],
-        config: _config,
+      final stato = _snakeManager.determinaStato(
+        uid: uid,
+        leaderProgress: leaderProgress,
+        scopaProgress: scopaProgress,
+        maxGroupDistance: _config.distanzaMassimaGruppo,
       );
-
+      
       _avvisiAttivi[uid] = _formation.generaAvviso(uid, p.engineState, stato);
       
       final targetPoint = p.nextTargetIndex < traccia.length ? traccia[p.nextTargetIndex] : null;

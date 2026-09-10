@@ -212,7 +212,6 @@ class SnakeFormationManager {
     if (p.engineState == EngineState.offRoute) return StatoCarovana.offRoute;
 
     // 0. Verifica GROUP_BROKEN (Lunghezza reale della serpentina)
-    // Se sono in coda e la mia distanza dal leader > soglia
     if (leaderProgress - p.routeProgress > maxGroupDistance) {
       return StatoCarovana.groupBroken;
     }
