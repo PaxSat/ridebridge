@@ -1,12 +1,20 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
+import '../servizi/formation_manager.dart';
+
+import 'schermata_stato_carovana.dart';
+
+import '../modelli/posizione_gps.dart';
+import '../servizi/location_evaluator.dart';
 
 /// Schermata principale dell'interfono live.
 class SchermataConversazione extends StatefulWidget {
@@ -26,11 +34,15 @@ class SchermataConversazione extends StatefulWidget {
 class _SchermataConversazioneState extends State<SchermataConversazione> {
   final ServizioGruppi _servizioGruppi = ServizioGruppi();
   final ServizioDatabase _servizioDatabase = ServizioDatabase();
+  final LocationEvaluator _evaluator = LocationEvaluator();
+  final FormationManager _formationManager = FormationManager();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   bool _canaleSpecialeAttivo = false;
   bool _sosAttivo = false;
   PartecipanteGruppo? _mioStatoLocale;
+  StatoCarovana _mioStatoCarovana = StatoCarovana.inGroup;
+  PosizioneGps? _posLeader;
 
   @override
   void initState() {
@@ -77,6 +89,30 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     }
   }
 
+  /// Apre l'app di navigazione esterna verso la posizione del Leader.
+  Future<void> _navigaAlLeader() async {
+    if (_posLeader == null) return;
+
+    final lat = _posLeader!.latitudine;
+    final lon = _posLeader!.longitudine;
+
+    Uri uri;
+    if (Platform.isAndroid) {
+      uri = Uri.parse("google.navigation:q=$lat,$lon&mode=d");
+    } else if (Platform.isIOS) {
+      uri = Uri.parse("comgooglemaps://?q=$lat,$lon");
+    } else {
+      uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
+    }
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      final fallbackUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
+      await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -92,16 +128,65 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
               .toList()),
       builder: (context, snapshot) {
-        final partecipanti = snapshot.data ?? [];
+        var partecipanti = snapshot.data ?? [];
         
+        final Map<String, StatoCarovana> statiCarovanaMembri = {};
+
         // Sincronizziamo lo stato locale con i dati Firestore per l'utente corrente
+        PartecipanteGruppo? leader;
+        PartecipanteGruppo? scopa;
+
         if (_uid != null && partecipanti.isNotEmpty) {
           try {
             final me = partecipanti.firstWhere((p) => p.idUtente == _uid);
             _mioStatoLocale = me;
             _sosAttivo = me.statoAudio?.emergenzaAttiva ?? false;
             _canaleSpecialeAttivo = me.statoAudio?.canaleSpecialeAttivo ?? false;
+
+            leader = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.leader);
+            _posLeader = leader.posizioneGps;
+            
+            try {
+              scopa = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.scopa);
+            } catch (_) {}
+
+            // CALCOLO STATO CAROVANA PER TUTTI (per i colori dei dot)
+            for (var p in partecipanti) {
+              if (p.posizioneGps != null && _posLeader != null) {
+                statiCarovanaMembri[p.idUtente] = _formationManager.verificaFormazione(
+                  idUtente: p.idUtente,
+                  idLeader: leader.idUtente,
+                  idScopa: scopa?.idUtente,
+                  posizioneUtente: p.posizioneGps!,
+                  posizioneLeader: _posLeader!,
+                  posizioneScopa: scopa?.posizioneGps,
+                  config: widget.gruppo.configurazione,
+                );
+              } else {
+                statiCarovanaMembri[p.idUtente] = StatoCarovana.inGroup;
+              }
+            }
+
+            _mioStatoCarovana = statiCarovanaMembri[_uid] ?? StatoCarovana.inGroup;
           } catch (_) {}
+        }
+
+        // ORDINAMENTO PER DISTANZA DAL LEADER (Ordine Carovana)
+        if (_posLeader != null) {
+          final PosizioneGps posLeaderSicura = _posLeader!;
+          partecipanti.sort((a, b) {
+            // Il Leader è sempre il primo (distanza 0)
+            if (a.ruolo == RuoloGruppo.leader) return -1;
+            if (b.ruolo == RuoloGruppo.leader) return 1;
+            
+            final distA = a.posizioneGps != null 
+                ? _evaluator.distanzaTraDuePunti(posLeaderSicura.latitudine, posLeaderSicura.longitudine, a.posizioneGps!.latitudine, a.posizioneGps!.longitudine)
+                : 999999.0;
+            final distB = b.posizioneGps != null 
+                ? _evaluator.distanzaTraDuePunti(posLeaderSicura.latitudine, posLeaderSicura.longitudine, b.posizioneGps!.latitudine, b.posizioneGps!.longitudine)
+                : 999999.0;
+            return distA.compareTo(distB);
+          });
         }
 
         return Scaffold(
@@ -124,7 +209,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                   ],
                 ),
               ),
-              Expanded(child: _costruisciListaPartecipanti(partecipanti)),
+              Expanded(child: _costruisciListaPartecipanti(partecipanti, statiCarovanaMembri)),
             ],
           ),
         );
@@ -134,6 +219,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
 
   Widget _costruisciHeaderControlli() {
     final l10n = AppLocalizations.of(context)!;
+    final bool fuoriFormazione = _mioStatoCarovana == StatoCarovana.aheadOfLeader || _mioStatoCarovana == StatoCarovana.offRoute;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -157,6 +243,31 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               etichetta: l10n.leader,
               colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
               onTap: _gestisciCanaleSpeciale,
+            ),
+
+          if (fuoriFormazione)
+            _bottoneCircolare(
+              icona: Icons.navigation,
+              etichetta: l10n.rejoinLeader.split(' ').last.toUpperCase(), // "LEADER"
+              colore: Colors.blue,
+              onTap: _navigaAlLeader,
+            )
+          else
+            _bottoneCircolare(
+              icona: Icons.location_on,
+              etichetta: l10n.caravanStatus.split(' ')[1].toUpperCase(), // "CAROVANA"
+              colore: Colors.orange,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SchermataStatoCarovana(
+                      mioRuolo: widget.mioRuoloIniziale,
+                      mioUid: _uid ?? "",
+                    ),
+                  ),
+                );
+              },
             ),
 
           _bottoneCircolare(
@@ -232,7 +343,17 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     );
   }
 
-  Widget _costruisciListaPartecipanti(List<PartecipanteGruppo> partecipanti) {
+  Color _ottieniColoreStato(StatoCarovana? stato) {
+    switch (stato) {
+      case StatoCarovana.aheadOfLeader: return Colors.orange;
+      case StatoCarovana.behindSweeper: return Colors.red;
+      case StatoCarovana.offRoute: return Colors.purple;
+      case StatoCarovana.groupBroken: return Colors.black;
+      default: return Colors.green;
+    }
+  }
+
+  Widget _costruisciListaPartecipanti(List<PartecipanteGruppo> partecipanti, Map<String, StatoCarovana> stati) {
     final l10n = AppLocalizations.of(context)!;
     if (partecipanti.isEmpty) return Center(child: Text(l10n.noParticipants));
     
@@ -240,11 +361,23 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
       itemCount: partecipanti.length,
       itemBuilder: (context, index) {
         final p = partecipanti[index];
+        final stato = stati[p.idUtente];
+
         return FutureBuilder<Utente?>(
           future: _servizioDatabase.leggiUtente(p.idUtente),
           builder: (context, uSnapshot) {
             final utente = uSnapshot.data;
             final nome = utente?.nickname?.isNotEmpty == true ? utente!.nickname! : (utente?.nome ?? l10n.loading);
+            
+            // Calcolo distanza dal LEADER per il sottotitolo
+            String subtitleText = utente?.moto ?? "";
+            if (p.ruolo != RuoloGruppo.leader && _posLeader != null && p.posizioneGps != null) {
+              final d = _evaluator.distanzaTraDuePunti(
+                _posLeader!.latitudine, _posLeader!.longitudine,
+                p.posizioneGps!.latitudine, p.posizioneGps!.longitudine,
+              );
+              subtitleText = "${utente?.moto ?? ''} • ${d.round()}m dal Leader".trim();
+            }
 
             return ListTile(
               leading: Stack(
@@ -260,7 +393,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                       width: 12,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: p.online ? Colors.green : Colors.grey,
+                        color: p.online ? _ottieniColoreStato(stato) : Colors.grey,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
@@ -269,7 +402,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                 ],
               ),
               title: Text("${_ottieniEmojiRuolo(p.ruolo)} $nome", style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(utente?.moto ?? ""),
+              subtitle: Text(subtitleText),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

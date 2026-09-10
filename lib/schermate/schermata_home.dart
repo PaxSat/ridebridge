@@ -26,6 +26,26 @@ class _SchermataHomeState extends State<SchermataHome> {
   final _servizioAuth = ServizioAuth();
   final _firebaseUser = FirebaseAuth.instance.currentUser;
 
+  // Gestione Modalità Debug Nascosta
+  int _clickDebugCount = 0;
+  bool _debugModeAbilitato = false;
+
+  void _gestisciClickImmagine() {
+    setState(() {
+      _clickDebugCount++;
+      if (_clickDebugCount >= 3) {
+        _debugModeAbilitato = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("🛠️ Modalità Debug Abilitata"),
+            backgroundColor: Colors.deepPurple,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -86,15 +106,18 @@ class _SchermataHomeState extends State<SchermataHome> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 20),
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.orange.withValues(alpha: 0.1),
-                    backgroundImage: utente?.fotoUrl != null 
-                        ? NetworkImage(utente!.fotoUrl!) 
-                        : null,
-                    child: utente?.fotoUrl == null 
-                        ? const Icon(Icons.motorcycle, size: 60, color: Colors.orange) 
-                        : null,
+                  GestureDetector(
+                    onTap: _gestisciClickImmagine,
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                      backgroundImage: utente?.fotoUrl != null 
+                          ? NetworkImage(utente!.fotoUrl!) 
+                          : null,
+                      child: utente?.fotoUrl == null 
+                          ? const Icon(Icons.motorcycle, size: 60, color: Colors.orange) 
+                          : null,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -175,24 +198,26 @@ class _SchermataHomeState extends State<SchermataHome> {
                       setState(() {});
                     },
                   ),
-                  const SizedBox(height: 16),
-                  _costruisciBottoneAzione(
-                    context: context,
-                    icona: Icons.bug_report_outlined,
-                    etichetta: "DEBUG GEOREF",
-                    colore: Colors.deepPurple,
-                    azione: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SchermataStatoCarovana(
-                            mioRuolo: RuoloGruppo.leader,
-                            mioUid: "leader",
+                  if (_debugModeAbilitato) ...[
+                    const SizedBox(height: 16),
+                    _costruisciBottoneAzione(
+                      context: context,
+                      icona: Icons.bug_report_outlined,
+                      etichetta: "DEBUG GEOREF",
+                      colore: Colors.deepPurple,
+                      azione: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SchermataStatoCarovana(
+                              mioRuolo: RuoloGruppo.leader,
+                              mioUid: "leader",
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 40),
                   const Divider(),
                   const Text(

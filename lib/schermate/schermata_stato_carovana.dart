@@ -104,7 +104,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       } else if (stato == StatoCarovana.aheadOfLeader) {
         msg = _avvisiAttivi[id]?.messaggio;
       } else {
-        msg = wpMsg ?? "In formazione...";
+        msg = wpMsg; // Rimosso "In formazione..." (indicato dal colore dello stato)
       }
       
       _messaggiNavigazione[id] = msg;
@@ -304,6 +304,29 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     // Se non sono leader/scopa, mostro solo il mio stato
     final listaId = visibilitaCompleta ? _ultimePosizioni.keys.toList() : [widget.mioUid];
 
+    // ORDINAMENTO PER DISTANZA DAL LEADER (Ordine Carovana)
+    final leaderPos = _ultimePosizioni['leader'];
+    if (visibilitaCompleta && leaderPos != null) {
+      listaId.sort((a, b) {
+        if (a == 'leader') return -1;
+        if (b == 'leader') return 1;
+        
+        final posA = _ultimePosizioni[a];
+        final posB = _ultimePosizioni[b];
+        if (posA == null || posB == null) return 0;
+
+        final distA = _formation.locationEvaluator.distanzaTraDuePunti(
+          leaderPos.latitudine, leaderPos.longitudine,
+          posA.latitudine, posA.longitudine,
+        );
+        final distB = _formation.locationEvaluator.distanzaTraDuePunti(
+          leaderPos.latitudine, leaderPos.longitudine,
+          posB.latitudine, posB.longitudine,
+        );
+        return distA.compareTo(distB);
+      });
+    }
+
     return Expanded(
       flex: 2,
       child: ListView(
@@ -324,13 +347,12 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                 backgroundColor: _ottieniColoreStato(stato),
                 child: const Icon(Icons.person, color: Colors.white),
               ),
-              title: Text("${id.toUpperCase()} - ${stato?.name.toUpperCase()}"),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(msg ?? "In attesa...", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  if (isAhead || isOffRoute)
-                    ElevatedButton.icon(
+              title: Text(id.toUpperCase()),
+              subtitle: msg != null && msg.isNotEmpty
+                ? Text(msg, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey))
+                : null,
+              trailing: (isAhead || isOffRoute)
+                  ? ElevatedButton.icon(
                       onPressed: _navigaAlLeader,
                       icon: const Icon(Icons.navigation, size: 14),
                       label: const Text("NAVIGA AL LEADER"),
@@ -339,9 +361,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
-                    ),
-                ],
-              ),
+                    )
+                  : null,
             ),
           );
         }).toList(),
