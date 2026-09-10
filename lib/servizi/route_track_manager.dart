@@ -81,30 +81,47 @@ class RouteTrackManager {
     return null;
   }
 
-  /// Esegue la Garbage Collection della traccia basata sulla progressione topologica.
-  /// Rimuove i punti che hanno completato il ciclo di vita (superati da tutti).
-  void garbageCollection({
+  /// Esegue la Garbage Collection della traccia (GeoRef V2).
+  /// Regola 1: Rimuove i punti passati da tutti i partecipanti.
+  /// Regola 2: Rimuove i punti che eccedono la lunghezza massima dello Snake (Finestra Mobile).
+  Map<String, int> garbageCollection({
     required List<int> completedSequenceIds,
-    int? tailSequenceId,
-    double? minSafetyBufferMeters,
+    double? maxSnakeLength,
   }) {
-    if (_track.isEmpty) return;
+    if (_track.isEmpty) return {'passed': 0, 'distance': 0};
 
-    _track.removeWhere((p) {
-      // Regola primaria: deve essere completato (tutti passati) basato sul sequenceId
-      if (!completedSequenceIds.contains(p.sequenceId)) return false;
+    final headProgress = _track.last.distanzaProgressiva;
+    int countPassed = 0;
+    int countDistance = 0;
 
-      // Regola secondaria (opzionale): deve essere strettamente dietro la coda tecnica attuale
-      if (tailSequenceId != null && p.sequenceId >= tailSequenceId) return false;
+    final toRemove = <RoutePoint>[];
 
-      // Regola terziaria (opzionale): buffer metrico rispetto alla testa della carovana
-      if (minSafetyBufferMeters != null) {
-        final distaccoDallaTesta = _track.last.distanzaProgressiva - p.distanzaProgressiva;
-        if (distaccoDallaTesta < minSafetyBufferMeters) return false;
+    for (var p in _track) {
+      bool passatiTutti = completedSequenceIds.contains(p.sequenceId);
+      bool fuoriFinestra = false;
+      
+      if (maxSnakeLength != null) {
+        fuoriFinestra = (headProgress - p.distanzaProgressiva) > maxSnakeLength;
       }
 
-      return true;
-    });
+      if (passatiTutti || fuoriFinestra) {
+        toRemove.add(p);
+        if (passatiTutti) {
+          countPassed++;
+        } else {
+          countDistance++;
+        }
+      }
+    }
+
+    for (var p in toRemove) {
+      _track.remove(p);
+    }
+
+    return {
+      'passed': countPassed,
+      'distance': countDistance,
+    };
   }
 
   /// Restituisce tutti i punti della traccia registrati finora.

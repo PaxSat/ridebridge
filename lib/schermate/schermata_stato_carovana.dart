@@ -45,6 +45,10 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   TailState? _tailState;
   StreamSubscription? _subscription;
 
+  // Debug GC Stats
+  int _gcEliminatiPassati = 0;
+  int _gcEliminatiDistanza = 0;
+
   @override
   void initState() {
     super.initState();
@@ -82,7 +86,41 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     // 3. Calcolo TailState
     _tailState = _snakeManager.calcolaTailState();
 
-    // 4. Analisi stati e messaggi
+    // 4. Esecuzione Garbage Collection (GeoRef V2)
+    // Regola 1: Rimuove i punti passati da tutti i partecipanti (Basato su lastValidatedIndex reale).
+    // Regola 2: Mantiene la finestra mobile (distanzaMassimaGruppo).
+    if (_ultimePosizioni.isNotEmpty) {
+      // Calcoliamo il minimo lastValidatedIndex reale tra tutti i partecipanti attivi
+      int minValidatedIndex = -1;
+      
+      for (var uid in _ultimePosizioni.keys) {
+        final p = _progressi[uid];
+        if (p == null) continue;
+        
+        // Se un partecipante non ha mai validato nulla, non possiamo eliminare per "passati tutti"
+        if (p.lastValidatedIndex == -1) {
+          minValidatedIndex = -1;
+          break;
+        }
+
+        if (minValidatedIndex == -1 || p.lastValidatedIndex < minValidatedIndex) {
+          minValidatedIndex = p.lastValidatedIndex;
+        }
+      }
+
+      final completedIds = minValidatedIndex > 0 
+          ? List.generate(minValidatedIndex, (i) => i) 
+          : <int>[];
+
+      final stats = _trackManager.garbageCollection(
+        completedSequenceIds: completedIds,
+        maxSnakeLength: _config.distanzaMassimaGruppo,
+      );
+      _gcEliminatiPassati = stats['passed'] ?? 0;
+      _gcEliminatiDistanza = stats['distance'] ?? 0;
+    }
+
+    // 5. Analisi stati e messaggi
     final leaderProgress = _progressi['leader']?.routeProgress ?? 0.0;
     final scopaProgress = _progressi['scopa']?.routeProgress;
 
@@ -138,6 +176,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
   Widget _costruisciHeader() {
     final leader = _ultimePosizioni['leader'];
+    final traccia = _trackManager.ottieniRoutePoints();
+
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.orange.withValues(alpha: 0.1),
@@ -153,8 +193,116 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
           if (leader != null) ...[
             const SizedBox(height: 8),
             Text("Progressione: ${(_trackManager.lunghezzaPercorso()).round()}m"),
-            Text("Punti Traccia: ${_trackManager.ottieniRoutePoints().length}"),
+            Text("Punti Traccia: ${traccia.length}"),
           ],
+          const SizedBox(height: 8),
+          ExpansionTile(
+            title: const Text("SEZIONE ROUTE POINTS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            dense: true,
+            children: traccia.map((pt) {
+              return ListTile(
+                dense: true,
+                title: Text("SEQ ${pt.sequenceId} • ${pt.distanzaProgressiva.round()}m"),
+                subtitle: Text("Lat: ${pt.latitudine.toStringAsFixed(6)} • Lon: ${pt.longitudine.toStringAsFixed(6)}"),
+              );
+            }).toList(),
+          ),
+          ExpansionTile(
+            title: const Text("SEZIONE TAIL DEBUG", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            dense: true,
+            children: [
+              ListTile(
+                dense: true,
+                title: Text("Tail UID: ${_tailState?.tailUid ?? 'N/A'}"),
+                subtitle: Text("Tail Index: ${_tailState?.tailIndex ?? 0}"),
+              ),
+            ],
+          ),
+          ExpansionTile(
+            title: const Text("GC DEBUG", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            dense: true,
+            children: [
+              ListTile(
+                dense: true,
+                title: Text("Snake Length Attuale: ${traccia.isEmpty ? 0 : (traccia.last.distanzaProgressiva - traccia.first.distanzaProgressiva).round()}m"),
+                subtitle: Text("Snake Length Configurata: ${_config.distanzaMassimaGruppo.round()}m"),
+              ),
+              ListTile(
+                dense: true,
+                title: Text("Range SEQ: ${traccia.isEmpty ? 'N/A' : '${traccia.first.sequenceId} -> ${traccia.last.sequenceId}'}"),
+                subtitle: Text("Eliminati: ${_gcEliminatiPassati} (Passati) | ${_gcEliminatiDistanza} (Snake Window)"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // Calcolo manuale del minimo lastValidatedIndex per coerenza con la logica automatica
+                int minIdx = -1;
+                for (var uid in _ultimePosizioni.keys) {
+                  final p = _progressi[uid];
+                  if (p == null || p.lastValidatedIndex == -1) {
+                    minIdx = -1;
+                    break;
+                  }
+                  if (minIdx == -1 || p.lastValidatedIndex < minIdx) minIdx = p.lastValidatedIndex;
+                }
+
+                final completedIds = minIdx > 0 ? List.generate(minIdx, (i) => i) : <int>[];
+                
+                final stats = _trackManager.garbageCollection(
+                  completedSequenceIds: completedIds,
+                  maxSnakeLength: _config.distanzaMassimaGruppo,
+                );
+
+                _gcEliminatiPassati = stats['passed'] ?? 0;
+                _gcEliminatiDistanza = stats['distance'] ?? 0;
+                
+                setState(() {});
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("🛠️ GC Manuale: ${_gcEliminatiPassati + _gcEliminatiDistanza} punti eliminati."),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.delete_sweep_outlined),
+              label: const Text("FORCE GC NOW"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _trackManager.reset();
+                _snakeManager.reset();
+                _progressi.clear();
+                _messaggiNavigazione.clear();
+                _avvisiAttivi.clear();
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("🔄 Engine Reset Completato"),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text("RESET ENGINE"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -181,7 +329,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListTile(
+            child: ExpansionTile(
               leading: CircleAvatar(
                 backgroundColor: _ottieniColoreStato(p.engineState, avviso?.tipo),
                 child: const Icon(Icons.person, color: Colors.white),
@@ -191,6 +339,24 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
               trailing: (p.engineState == EngineState.offRoute)
                   ? IconButton(icon: const Icon(Icons.navigation, color: Colors.blue), onPressed: _navigaAlLeader)
                   : Text("${p.routeProgress.round()}m"),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("SEZIONE RIDER DEBUG", style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Divider(),
+                      Text("UID: ${p.uid}"),
+                      Text("Engine State: ${p.engineState.name}"),
+                      Text("Last Validated Index: ${p.lastValidatedIndex}"),
+                      Text("Next Target Index: ${p.nextTargetIndex}"),
+                      Text("Route Progress: ${p.routeProgress.toStringAsFixed(1)}m"),
+                      Text("Consecutive Misses: ${p.consecutiveMisses}"),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         }).toList(),
