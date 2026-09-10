@@ -12,18 +12,19 @@ import '../modelli/route_progress.dart';
 import '../modelli/engine_state.dart';
 import '../modelli/tail_state.dart';
 import '../servizi/servizio_posizione_fake.dart';
-import '../servizi/route_tracker.dart';
+import '../servizi/location_evaluator.dart';
 import '../servizi/formation_manager.dart';
 import '../servizi/waypoint_manager.dart';
 import '../servizi/snake_formation_manager.dart';
+import '../servizi/route_track_manager.dart';
 
-/// Schermata per monitorare lo stato della carovana e la navigazione.
+/// Schermata per monitorare lo stato della carovana e la navigazione (GeoRef V2).
 class SchermataStatoCarovana extends StatefulWidget {
   final RuoloGruppo mioRuolo;
   final String mioUid;
 
   const SchermataStatoCarovana({
-    super.key, 
+    super.key,
     required this.mioRuolo,
     required this.mioUid,
   });
@@ -34,16 +35,18 @@ class SchermataStatoCarovana extends StatefulWidget {
 
 class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   final _fakeGps = ServizioPosizioneFake();
-  final _tracker = RouteTracker();
+  final _trackManager = RouteTrackManager();
+  final _snakeManager = SnakeFormationManager();
   final _formation = FormationManager();
   final _waypointManager = WaypointManager();
+  final _evaluator = LocationEvaluator();
   final _config = ConfigurazioneGruppo();
 
   Map<String, PosizioneGps> _ultimePosizioni = {};
-  final Map<String, StatoCarovana> _statiMembri = {};
+  final Map<String, RouteProgress> _progressi = {};
   final Map<String, String?> _messaggiNavigazione = {};
   final Map<String, AvvisoCarovana?> _avvisiAttivi = {};
-  String? _ultimoMembroCarovana;
+  TailState? _tailState;
   StreamSubscription? _subscription;
 
   @override
@@ -53,65 +56,60 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       if (mounted) {
         setState(() {
           _ultimePosizioni = posizioni;
-          _processaMotore();
+          _processaMotoreV2();
         });
       }
     });
     _fakeGps.avviaSimulazione();
   }
 
-  void _processaMotore() {
-    final leader = _ultimePosizioni['leader'];
-    final scopa = _ultimePosizioni['scopa'];
+  void _processaMotoreV2() {
+    final leaderPos = _ultimePosizioni['leader'];
+    if (leaderPos == null) return;
 
-    if (leader != null) {
-      _tracker.processaPosizioneLeader(
-        idGruppo: "ride_group",
-        idLeader: "leader",
-        lat: leader.latitudine,
-        lon: leader.longitudine,
-        bearingAttuale: leader.direzione,
-        turnThreshold: _config.turnThresholdAngle,
+    // 1. Il Leader genera la traccia
+    _trackManager.aggiungiPosizioneLeader(leaderPos);
+    final traccia = _trackManager.ottieniRoutePoints();
+    final leaderSeqId = _trackManager.ultimoRoutePoint()?.sequenceId ?? 0;
+
+    // 2. I partecipanti camminano sullo Snake
+    _ultimePosizioni.forEach((uid, pos) {
+      final progress = _snakeManager.aggiornaPosizionePartecipante(
+        uid: uid,
+        pos: pos,
+        traccia: traccia,
+        leaderSequenceId: leaderSeqId,
       );
+      _progressi[uid] = progress;
+    });
 
-      for (var wp in _tracker.waypointAttivi) {
-        _waypointManager.aggiungiWaypoint(wp);
-      }
-    }
+    // 3. Calcolo TailState e GC
+    _tailState = _snakeManager.calcolaTailState();
+    // In questa versione demo puliamo i punti completati basandoci sul TailState per semplicità di simulazione
+    // (Nel motore reale verrebbe usata la lista degli ID completati da Firestore)
 
-    _ultimePosizioni.forEach((id, pos) {
-      _statiMembri[id] = _formation.verificaFormazione(
-        idUtente: id,
+    // 4. Analisi stati e messaggi
+    final leaderProgress = _progressi['leader']?.routeProgress ?? 0.0;
+
+    _ultimePosizioni.forEach((uid, pos) {
+      final p = _progressi[uid]!;
+      
+      final stato = _formation.verificaFormazione(
+        idUtente: uid,
         idLeader: "leader",
         idScopa: "scopa",
         posizioneUtente: pos,
-        posizioneLeader: leader,
-        posizioneScopa: scopa,
+        posizioneLeader: leaderPos,
+        posizioneScopa: _ultimePosizioni['scopa'],
         config: _config,
       );
-    });
 
-    _waypointManager.aggiornaProgresso(_ultimePosizioni, _statiMembri);
-    _ultimoMembroCarovana = _waypointManager.identificaUltimoMembro(_ultimePosizioni);
-
-    _ultimePosizioni.forEach((id, pos) {
-      final stato = _statiMembri[id]!;
-      _avvisiAttivi[id] = _formation.generaAvviso(id, stato);
-
-      final wpMsg = _waypointManager.ottieniIstruzioneNavigazione(id, pos, _config.triggerDistanceMeters, stato);
-
-      String? msg;
-      if (stato == StatoCarovana.offRoute) {
-        msg = _avvisiAttivi[id]?.messaggio;
-      } else if (stato == StatoCarovana.behindSweeper || stato == StatoCarovana.groupBroken) {
-        msg = "${_avvisiAttivi[id]?.messaggio ?? ''} ${wpMsg ?? ''}".trim();
-      } else if (stato == StatoCarovana.aheadOfLeader) {
-        msg = _avvisiAttivi[id]?.messaggio;
-      } else {
-        msg = wpMsg;
-      }
+      _avvisiAttivi[uid] = _formation.generaAvviso(uid, p.engineState, stato);
       
-      _messaggiNavigazione[id] = msg;
+      final targetPoint = p.nextTargetIndex < traccia.length ? traccia[p.nextTargetIndex] : null;
+      _messaggiNavigazione[uid] = _waypointManager.ottieniIstruzioneNavigazione(
+        pos, targetPoint, _config.triggerDistanceMeters, p.engineState
+      );
     });
   }
 
@@ -122,55 +120,31 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     super.dispose();
   }
 
-  /// Apre l'app di navigazione esterna verso la posizione del Leader.
   Future<void> _navigaAlLeader() async {
     final leader = _ultimePosizioni['leader'];
     if (leader == null) return;
-
-    final lat = leader.latitudine;
-    final lon = leader.longitudine;
-
-    Uri uri;
-    if (Platform.isAndroid) {
-      uri = Uri.parse("google.navigation:q=$lat,$lon&mode=d");
-    } else if (Platform.isIOS) {
-      uri = Uri.parse("comgooglemaps://?q=$lat,$lon");
-    } else {
-      uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
-    }
-
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      // Fallback su browser se l'app non è installata
-      final fallbackUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
-      await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
-    }
+    final uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${leader.latitudine},${leader.longitudine}");
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final bool eLeaderOScopa = widget.mioRuolo == RuoloGruppo.leader || widget.mioRuolo == RuoloGruppo.scopa;
+    final bool visibilitaCompleta = widget.mioRuolo == RuoloGruppo.leader || widget.mioRuolo == RuoloGruppo.scopa;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("📍 ${l10n.caravanStatus}"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text("📍 ${l10n.caravanStatus}"), centerTitle: true),
       body: Column(
         children: [
-          _costruisciPannelloInfo(),
+          _costruisciHeader(),
           const Divider(thickness: 2),
-          _costruisciSezioneWaypoints(eLeaderOScopa),
-          const Divider(thickness: 2),
-          _costruisciSezioneMembri(eLeaderOScopa),
+          _costruisciListaMembri(visibilitaCompleta),
         ],
       ),
     );
   }
 
-  Widget _costruisciPannelloInfo() {
+  Widget _costruisciHeader() {
     final leader = _ultimePosizioni['leader'];
     return Container(
       padding: const EdgeInsets.all(16),
@@ -180,193 +154,51 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("LEADER", style: TextStyle(fontWeight: FontWeight.bold)),
-              Text("Coda: ${_ultimoMembroCarovana?.toUpperCase() ?? '...'}", 
-                   style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+              const Text("LEADER (SNAKE HEAD)", style: TextStyle(fontWeight: FontWeight.bold)),
+              Text("Tail Index: ${_tailState?.tailIndex ?? 0}"),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Bearing: ${leader?.direzione.toStringAsFixed(1)}°"),
-              Text("Vel: ${(leader?.velocita ?? 0 * 3.6).round()} km/h"),
-            ],
-          ),
+          if (leader != null) ...[
+            const SizedBox(height: 8),
+            Text("Progressione: ${(_trackManager.lunghezzaPercorso()).round()}m"),
+            Text("Punti Traccia: ${_trackManager.ottieniRoutePoints().length}"),
+          ],
         ],
       ),
     );
   }
 
-  Widget _costruisciSezioneWaypoints(bool visibilitaCompleta) {
-    final attivi = _waypointManager.waypointsAttivi;
-    final completati = _waypointManager.waypointsCompletati;
-
-    return Expanded(
-      flex: 2,
-      child: DefaultTabController(
-        length: 2,
-        child: Column(
-          children: [
-            const TabBar(
-              tabs: [
-                Tab(text: "ATTIVI"),
-                Tab(text: "COMPLETATI"),
-              ],
-              labelColor: Colors.orange,
-              unselectedLabelColor: Colors.grey,
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _listaWaypoints(attivi, visibilitaCompleta),
-                  _listaWaypoints(completati, visibilitaCompleta),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _listaWaypoints(List<ManagedWaypoint> list, bool visibilitaCompleta) {
-    final membriInCarovana = _ultimePosizioni.keys.where((id) {
-      final stato = _statiMembri[id];
-      return stato != StatoCarovana.aheadOfLeader && stato != StatoCarovana.offRoute;
-    }).toList();
-
-    return ListView.builder(
-      itemCount: list.length,
-      itemBuilder: (context, i) {
-        final mw = list[i];
-        final ev = mw.evento;
-
-        var entries = membriInCarovana.map((id) {
-          final pos = _ultimePosizioni[id]!;
-          final dist = _formation.locationEvaluator.distanzaTraDuePunti(
-            pos.latitudine, pos.longitudine,
-            ev.latitudine, ev.longitudine,
-          );
-          final passato = mw.partecipantiPassati.contains(id);
-          return _MembroInfo(id: id, distanza: dist, passato: passato);
-        }).toList();
-
-        // 1. Il Leader non viene mai mostrato (è il riferimento iniziale)
-        entries.removeWhere((e) => e.id == "leader");
-
-        // 2. Chi ha già superato la svolta scompare dal waypoint (regola di pulizia)
-        entries.removeWhere((e) => e.passato);
-
-        // ORDINAMENTO: per distanza crescente dal waypoint (chi è più vicino in cima)
-        entries.sort((a, b) => a.distanza.compareTo(b.distanza));
-
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: mw.status == WaypointStatus.completato ? Colors.green.withValues(alpha: 0.05) : Colors.blue.withValues(alpha: 0.05),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(ev.tipoEvento.name.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text("${mw.partecipantiPassati.length} / ${membriInCarovana.length}"),
-                  ],
-                ),
-                if (entries.isNotEmpty) ...[
-                  const Divider(),
-                  ...entries.map((e) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("${e.id.toUpperCase()}: ${e.distanza.round()}m", 
-                             style: const TextStyle(fontSize: 12)),
-                        const Text("IN ARRIVO", style: TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  )),
-                ] else if (mw.status == WaypointStatus.attivo) ...[
-                  const Divider(),
-                  const Center(
-                    child: Text("Tutti i membri hanno svoltato", style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.green)),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _costruisciSezioneMembri(bool visibilitaCompleta) {
-    // Se non sono leader/scopa, mostro solo il mio stato
+  Widget _costruisciListaMembri(bool visibilitaCompleta) {
     final listaId = visibilitaCompleta ? _ultimePosizioni.keys.toList() : [widget.mioUid];
-
-    // ORDINAMENTO PER DISTANZA DAL LEADER (Ordine Carovana)
-    final leaderPos = _ultimePosizioni['leader'];
-    if (visibilitaCompleta && leaderPos != null) {
-      listaId.sort((a, b) {
-        if (a == 'leader') return -1;
-        if (b == 'leader') return 1;
-        
-        final posA = _ultimePosizioni[a];
-        final posB = _ultimePosizioni[b];
-        if (posA == null || posB == null) return 0;
-
-        final distA = _formation.locationEvaluator.distanzaTraDuePunti(
-          leaderPos.latitudine, leaderPos.longitudine,
-          posA.latitudine, posA.longitudine,
-        );
-        final distB = _formation.locationEvaluator.distanzaTraDuePunti(
-          leaderPos.latitudine, leaderPos.longitudine,
-          posB.latitudine, posB.longitudine,
-        );
-        return distA.compareTo(distB);
-      });
-    }
+    
+    // Ordine carovana reale basato sulla progressione
+    listaId.sort((a, b) {
+      final progA = _progressi[a]?.routeProgress ?? 0.0;
+      final progB = _progressi[b]?.routeProgress ?? 0.0;
+      return progB.compareTo(progA);
+    });
 
     return Expanded(
-      flex: 2,
       child: ListView(
         children: listaId.map((id) {
-          final pos = _ultimePosizioni[id];
-          final stato = _statiMembri[id];
+          final p = _progressi[id];
           final msg = _messaggiNavigazione[id];
+          final avviso = _avvisiAttivi[id];
           
-          if (pos == null) return const SizedBox.shrink();
-
-          final bool isAhead = stato == StatoCarovana.aheadOfLeader;
-          final bool isOffRoute = stato == StatoCarovana.offRoute;
+          if (p == null) return const SizedBox.shrink();
 
           return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: _ottieniColoreStato(stato),
+                backgroundColor: _ottieniColoreStato(p.engineState, avviso?.tipo),
                 child: const Icon(Icons.person, color: Colors.white),
               ),
               title: Text(id.toUpperCase()),
-              subtitle: msg != null && msg.isNotEmpty
-                ? Text(msg, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey))
-                : null,
-              trailing: (isAhead || isOffRoute)
-                  ? ElevatedButton.icon(
-                      onPressed: _navigaAlLeader,
-                      icon: const Icon(Icons.navigation, size: 14),
-                      label: const Text("NAVIGA AL LEADER"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue, 
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                    )
-                  : null,
+              subtitle: Text(avviso?.messaggio ?? (msg ?? "In marcia...")),
+              trailing: (p.engineState == EngineState.offRoute)
+                  ? IconButton(icon: const Icon(Icons.navigation, color: Colors.blue), onPressed: _navigaAlLeader)
+                  : Text("${p.routeProgress.round()}m"),
             ),
           );
         }).toList(),
@@ -374,20 +206,10 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     );
   }
 
-  Color _ottieniColoreStato(StatoCarovana? stato) {
-    switch (stato) {
-      case StatoCarovana.aheadOfLeader: return Colors.orange;
-      case StatoCarovana.behindSweeper: return Colors.red;
-      case StatoCarovana.offRoute: return Colors.purple;
-      case StatoCarovana.groupBroken: return Colors.black;
-      default: return Colors.green;
-    }
+  Color _ottieniColoreStato(EngineState engine, TipoAvvisoCarovana? avviso) {
+    if (engine == EngineState.offRoute) return Colors.purple;
+    if (avviso == TipoAvvisoCarovana.aheadOfLeader) return Colors.orange;
+    if (avviso == TipoAvvisoCarovana.behindSweeper) return Colors.red;
+    return Colors.green;
   }
-}
-
-class _MembroInfo {
-  final String id;
-  final double distanza;
-  final bool passato;
-  _MembroInfo({required this.id, required this.distanza, required this.passato});
 }

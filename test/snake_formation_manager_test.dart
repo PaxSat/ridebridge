@@ -3,8 +3,8 @@ import 'package:ridebridge/modelli/posizione_gps.dart';
 import 'package:ridebridge/modelli/route_point.dart';
 import 'package:ridebridge/modelli/route_progress.dart';
 import 'package:ridebridge/modelli/engine_state.dart';
+import 'package:ridebridge/modelli/stato_carovana.dart';
 import 'package:ridebridge/servizi/snake_formation_manager.dart';
-import 'package:ridebridge/servizi/formation_manager.dart';
 
 void main() {
   late SnakeFormationManager manager;

@@ -1,4 +1,4 @@
-/// Definisce i tipi di anomalie o avvisi relativi alla formazione del gruppo.
+/// Definisce i tipi di anomalie o avvisi relativi alla formazione del gruppo (GeoRef V2).
 enum TipoAvvisoCarovana {
   aheadOfLeader,
   behindSweeper,

@@ -3,8 +3,8 @@ import '../modelli/route_progress.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/tail_state.dart';
 import '../modelli/engine_state.dart';
+import '../modelli/stato_carovana.dart';
 import '../servizi/location_evaluator.dart';
-import '../servizi/formation_manager.dart'; // Per StatoCarovana enum
 
 /// Motore di progressione e gestione della formazione a serpentina (Snake Formation).
 /// Filosofia: "Walking on the Snake".
@@ -199,16 +199,25 @@ class SnakeFormationManager {
     );
   }
 
-  /// Determina lo stato della carovana basandosi sulla progressione V2.
+  /// Determina lo stato della carovana basandosi sulla progressione topologica V2.
   StatoCarovana determinaStato({
     required String uid,
     required double leaderProgress,
+    required double? scopaProgress,
+    required double maxGroupDistance,
   }) {
     final p = _progressi[uid];
     if (p == null) return StatoCarovana.inGroup;
 
     if (p.engineState == EngineState.offRoute) return StatoCarovana.offRoute;
 
+    // 0. Verifica GROUP_BROKEN (Lunghezza reale della serpentina)
+    // Se sono in coda e la mia distanza dal leader > soglia
+    if (leaderProgress - p.routeProgress > maxGroupDistance) {
+      return StatoCarovana.groupBroken;
+    }
+
+    // 1. AHEAD_OF_LEADER (con Isteresi)
     if (p.routeProgress > leaderProgress + 20.0) {
       _aheadConfirmations[uid] = (_aheadConfirmations[uid] ?? 0) + 1;
       if (_aheadConfirmations[uid]! >= _aheadConfirmationRequired) {
@@ -216,6 +225,11 @@ class SnakeFormationManager {
       }
     } else if (p.routeProgress < leaderProgress - _aheadHysteresisMeters) {
       _aheadConfirmations[uid] = 0;
+    }
+
+    // 2. BEHIND_SWEEPER (Progressione relativa alla Scopa)
+    if (scopaProgress != null && uid != 'scopa' && p.routeProgress < scopaProgress - 30.0) {
+      return StatoCarovana.behindSweeper;
     }
 
     return StatoCarovana.inGroup;

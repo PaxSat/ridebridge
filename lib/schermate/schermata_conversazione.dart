@@ -8,6 +8,8 @@ import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
 import '../modelli/posizione_gps.dart';
+import '../modelli/engine_state.dart';
+import '../modelli/stato_carovana.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
 import '../servizi/formation_manager.dart';
@@ -149,44 +151,33 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               scopa = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.scopa);
             } catch (_) {}
 
-            // CALCOLO STATO CAROVANA PER TUTTI (per i colori dei dot)
+            // CALCOLO STATO CAROVANA V2 (Unica Verità)
+            final leaderProg = statiCarovanaMembri['leader'] != null ? 0.0 : 0.0; // Placeholder for logic below
+            // Il calcolo reale viene fatto nel ciclo per ogni partecipante
+            final scopaProgress = partecipanti.any((p) => p.ruolo == RuoloGruppo.scopa) 
+                ? _snakeManager.ottieniProgress(partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.scopa).idUtente)?.routeProgress 
+                : null;
+            final leaderProgress = _snakeManager.ottieniProgress(leader.idUtente)?.routeProgress ?? 0.0;
+
             for (var p in partecipanti) {
-              if (p.posizioneGps != null && _posLeader != null) {
-                statiCarovanaMembri[p.idUtente] = _formationManager.verificaFormazione(
-                  idUtente: p.idUtente,
-                  idLeader: leader.idUtente,
-                  idScopa: scopa?.idUtente,
-                  posizioneUtente: p.posizioneGps!,
-                  posizioneLeader: _posLeader!,
-                  posizioneScopa: scopa?.posizioneGps,
-                  config: widget.gruppo.configurazione,
-                );
-              } else {
-                statiCarovanaMembri[p.idUtente] = StatoCarovana.inGroup;
-              }
+              statiCarovanaMembri[p.idUtente] = _snakeManager.determinaStato(
+                uid: p.idUtente,
+                leaderProgress: leaderProgress,
+                scopaProgress: scopaProgress,
+                maxGroupDistance: widget.gruppo.configurazione.distanzaMassimaGruppo,
+              );
             }
 
             _mioStatoCarovana = statiCarovanaMembri[_uid] ?? StatoCarovana.inGroup;
           } catch (_) {}
         }
 
-        // ORDINAMENTO PER DISTANZA DAL LEADER (Ordine Carovana)
-        if (_posLeader != null) {
-          final PosizioneGps posLeaderSicura = _posLeader!;
-          partecipanti.sort((a, b) {
-            // Il Leader è sempre il primo (distanza 0)
-            if (a.ruolo == RuoloGruppo.leader) return -1;
-            if (b.ruolo == RuoloGruppo.leader) return 1;
-            
-            final distA = a.posizioneGps != null 
-                ? _evaluator.distanzaTraDuePunti(posLeaderSicura.latitudine, posLeaderSicura.longitudine, a.posizioneGps!.latitudine, a.posizioneGps!.longitudine)
-                : 999999.0;
-            final distB = b.posizioneGps != null 
-                ? _evaluator.distanzaTraDuePunti(posLeaderSicura.latitudine, posLeaderSicura.longitudine, b.posizioneGps!.latitudine, b.posizioneGps!.longitudine)
-                : 999999.0;
-            return distA.compareTo(distB);
-          });
-        }
+        // ORDINAMENTO PER PROGRESSIONE REALE (Snake Order)
+        partecipanti.sort((a, b) {
+          final progA = _snakeManager.ottieniProgress(a.idUtente)?.routeProgress ?? 0.0;
+          final progB = _snakeManager.ottieniProgress(b.idUtente)?.routeProgress ?? 0.0;
+          return progB.compareTo(progA); // Leader in cima (più progressione)
+        });
 
         return Scaffold(
           appBar: AppBar(

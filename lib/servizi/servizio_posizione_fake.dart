@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import '../modelli/posizione_gps.dart';
 
-/// Simulatore di movimento GPS per testare il motore di georeferenziazione.
+/// Simulatore di movimento GPS per GeoRef V2.
 class ServizioPosizioneFake {
   final _controller = StreamController<Map<String, PosizioneGps>>.broadcast();
   Timer? _timer;
@@ -32,9 +32,9 @@ class ServizioPosizioneFake {
         _direzione += (math.Random().nextDouble() - 0.5) * 0.5; // Micro correzioni stabili
       }
 
-      const tempo = 1.0; 
+      const tempo = 1.0;
       final distanza = _velocita * tempo;
-      
+
       final deltaLat = (distanza * math.cos(_direzione * math.pi / 180.0)) / 111320.0;
       final deltaLon = (distanza * math.sin(_direzione * math.pi / 180.0)) / (111320.0 * math.cos(_baseLat * math.pi / 180.0));
 
@@ -54,17 +54,17 @@ class ServizioPosizioneFake {
 
       // 2. La Scopa segue le briciole (es. 20 secondi indietro -> ~276 metri)
       final indexScopa = _bricioleLeader.length > 20 ? _bricioleLeader.length - 20 : 0;
-      final posScopa = _bricioleLeader[indexScopa].copiaCon(ultimoAggiornamento: DateTime.now());
+      final posScopa = _bricioleLeader[indexScopa];
 
       // 3. Un Partecipante che segue a metà strada tra leader e scopa
       final indexPart = _bricioleLeader.length > 10 ? _bricioleLeader.length - 10 : 0;
-      
+
       // Simuliamo gli stati del partecipante_test
       PosizioneGps posPartecipante;
       if (timer.tick > 60 && timer.tick < 80) {
         // Avanti al leader (offset artificiale)
         posPartecipante = PosizioneGps(
-          latitudine: _baseLat + 0.003, 
+          latitudine: _baseLat + 0.003,
           longitudine: _baseLon + 0.003,
           direzione: _direzione,
           velocita: _velocita,
@@ -81,7 +81,7 @@ class ServizioPosizioneFake {
         );
       } else {
         // In gruppo (segue briciole)
-        posPartecipante = _bricioleLeader[indexPart].copiaCon(ultimoAggiornamento: DateTime.now());
+        posPartecipante = _bricioleLeader[indexPart];
       }
 
       _controller.add({
