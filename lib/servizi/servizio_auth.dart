@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'servizio_database.dart';
 import '../modelli/utente.dart';
@@ -33,39 +32,72 @@ class ServizioAuth {
       final UserCredential userCredential = 
           await FirebaseAuth.instance.signInWithCredential(credenziale);
 
-      final User? firebaseUser = userCredential.user;
-
-      if (firebaseUser != null) {
-        // Verifica se l'utente esiste già per evitare di sovrascrivere nickname e moto
-        final bool esiste = await _servizioDatabase.esisteUtente(firebaseUser.uid);
-
-        if (esiste) {
-          // Se esiste, aggiorniamo solo l'accesso e lo stato attivo
-          await _servizioDatabase.aggiornaUltimoAccesso(firebaseUser.uid);
-        } else {
-          // Se è un nuovo utente, creiamo il profilo base
-          final Utente utente = Utente(
-            id: firebaseUser.uid,
-            nome: firebaseUser.displayName ?? 'Motociclista',
-            email: firebaseUser.email ?? '',
-            fotoUrl: firebaseUser.photoURL,
-            ultimoAccesso: DateTime.now(),
-            attivo: true,
-            dataRegistrazione: DateTime.now(),
-          );
-          await _servizioDatabase.salvaUtente(utente);
-        }
+      if (userCredential.user != null) {
+        await _sincronizzaProfilo(userCredential.user!);
       }
 
       return userCredential;
-    } catch (e, stack) {
-     debugPrint('================================');
-     debugPrint('LOGIN GOOGLE FALLITO');
-     debugPrint(e.toString());
-     debugPrint(stack.toString());
-     debugPrint('================================');
-     rethrow;
+    } catch (e) {
+      rethrow;
+    }
+  }
 
+  /// Effettua l'accesso tramite Email e Password.
+  Future<UserCredential?> accediConEmail(String email, String password) async {
+    try {
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+      
+      if (userCredential.user != null) {
+        await _sincronizzaProfilo(userCredential.user!);
+      }
+      return userCredential;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Effettua la registrazione tramite Email e Password.
+  Future<UserCredential?> registraConEmail(String email, String password) async {
+    try {
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      
+      if (userCredential.user != null) {
+        await _sincronizzaProfilo(userCredential.user!);
+        await inviaEmailVerifica();
+      }
+      return userCredential;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Invia l'email di verifica all'utente corrente.
+  Future<void> inviaEmailVerifica() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+
+  /// Sincronizza i dati dell'utente Firebase con Firestore.
+  Future<void> _sincronizzaProfilo(User firebaseUser) async {
+    final bool esiste = await _servizioDatabase.esisteUtente(firebaseUser.uid);
+
+    if (esiste) {
+      await _servizioDatabase.aggiornaUltimoAccesso(firebaseUser.uid);
+    } else {
+      final Utente utente = Utente(
+        id: firebaseUser.uid,
+        nome: firebaseUser.displayName ?? firebaseUser.email?.split('@').first ?? 'Motociclista',
+        email: firebaseUser.email ?? '',
+        fotoUrl: firebaseUser.photoURL,
+        ultimoAccesso: DateTime.now(),
+        attivo: true,
+        dataRegistrazione: DateTime.now(),
+      );
+      await _servizioDatabase.salvaUtente(utente);
     }
   }
 
