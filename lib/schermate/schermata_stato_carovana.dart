@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 import '../l10n/app_localizations.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/configurazione_gruppo.dart';
@@ -51,6 +52,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   final Map<String, AvvisoCarovana?> _avvisiAttivi = {};
   TailState? _tailState;
   StreamSubscription? _subscription;
+  StreamSubscription? _localGpsSubscription;
 
   // Debug GC Stats
   int _gcEliminatiPassati = 0;
@@ -67,6 +69,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
   void _cambiaSorgenteGps(bool reale) {
     _subscription?.cancel();
+    _localGpsSubscription?.cancel();
     _fakeGps.fermaSimulazione();
     _servizioReal?.ferma();
 
@@ -93,9 +96,45 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
       if (_usaGpsReale) {
         _servizioReal?.avvia();
+        _avviaBroadcastGpsReale();
       } else {
         _fakeGps.avviaSimulazione();
       }
+    });
+  }
+
+  /// Avvia il broadcast della propria posizione reale su Firestore.
+  Future<void> _avviaBroadcastGpsReale() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    
+    if (permission == LocationPermission.deniedForever) return;
+
+    _localGpsSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    ).listen((Position position) {
+      final pos = PosizioneGps(
+        latitudine: position.latitude,
+        longitudine: position.longitude,
+        altitudine: position.altitude,
+        velocita: position.speed,
+        direzione: position.heading,
+        ultimoAggiornamento: position.timestamp,
+      );
+      
+      _servizioReal?.aggiornaMiaPosizione(pos);
     });
   }
 
@@ -193,6 +232,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _localGpsSubscription?.cancel();
     _fakeGps.fermaSimulazione();
     _servizioReal?.ferma();
     super.dispose();

@@ -37,7 +37,7 @@ class FormationManager {
 
     return AvvisoCarovana(
       idUtente: idUtente,
-      tipo: tipo!,
+      tipo: tipo,
       timestamp: DateTime.now(),
       messaggio: messaggio,
     );
