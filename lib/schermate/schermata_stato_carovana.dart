@@ -6,6 +6,7 @@ import '../modelli/posizione_gps.dart';
 import '../modelli/configurazione_gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/avviso_carovana.dart';
+import '../modelli/route_point.dart';
 import '../modelli/route_progress.dart';
 import '../modelli/engine_state.dart';
 import '../modelli/tail_state.dart';
@@ -61,6 +62,14 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       }
     });
     _fakeGps.avviaSimulazione();
+  }
+
+  RoutePoint? _trovaRoutePointDaSequenceId(List<RoutePoint> traccia, int sequenceId) {
+    if (sequenceId < 0) return null;
+    return traccia.cast<RoutePoint?>().firstWhere(
+      (pt) => pt?.sequenceId == sequenceId,
+      orElse: () => null,
+    );
   }
 
   void _processaMotoreV2() {
@@ -136,7 +145,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       
       _avvisiAttivi[uid] = _formation.generaAvviso(uid, p.engineState, stato);
       
-      final targetPoint = p.nextTargetIndex < traccia.length ? traccia[p.nextTargetIndex] : null;
+      final targetPoint = _trovaRoutePointDaSequenceId(traccia, p.nextTargetIndex);
       _messaggiNavigazione[uid] = _waypointManager.ottieniIstruzioneNavigazione(
         pos, targetPoint, _config.triggerDistanceMeters, p.engineState
       );
@@ -230,7 +239,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
               ListTile(
                 dense: true,
                 title: Text("Range SEQ: ${traccia.isEmpty ? 'N/A' : '${traccia.first.sequenceId} -> ${traccia.last.sequenceId}'}"),
-                subtitle: Text("Eliminati: ${_gcEliminatiPassati} (Passati) | ${_gcEliminatiDistanza} (Snake Window)"),
+                subtitle: Text("Eliminati: $_gcEliminatiPassati (Passati) | $_gcEliminatiDistanza (Snake Window)"),
               ),
             ],
           ),
@@ -299,6 +308,138 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
               label: const Text("RESET ENGINE"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _trackManager.reset();
+                _snakeManager.reset();
+                _progressi.clear();
+                _messaggiNavigazione.clear();
+                _avvisiAttivi.clear();
+
+                final baseTime = DateTime.now();
+                for (int i = 0; i <= 40; i++) {
+                  // Spostamento di 0.00045 gradi ~ 50 metri
+                  final lat = 45.0 + (i * 0.00045);
+                  final pos = PosizioneGps(
+                    latitudine: lat,
+                    longitudine: 9.0,
+                    ultimoAggiornamento: baseTime.add(Duration(seconds: i * 5)),
+                  );
+                  _trackManager.aggiungiPosizioneLeader(pos);
+                  
+                  if (i == 30) {
+                    _ultimePosizioni['leader'] = pos;
+                  }
+                }
+
+                setState(() {});
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("🛤️ Traccia Fake Generata: 40 punti (2000m)"),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map_outlined),
+              label: const Text("GENERA TRACCIA FAKE (1500m)"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                final traccia = _trackManager.ottieniRoutePoints();
+                final p2 = traccia.cast<RoutePoint?>().firstWhere(
+                  (p) => p?.sequenceId == 2,
+                  orElse: () => null,
+                );
+
+                if (p2 != null) {
+                  setState(() {
+                    _ultimePosizioni['mario'] = PosizioneGps(
+                      latitudine: p2.latitudine,
+                      longitudine: p2.longitudine,
+                      ultimoAggiornamento: DateTime.now(),
+                    );
+                    _processaMotoreV2();
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("👤 MARIO (Motociclista) posizionato a SEQ 2"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("❌ Errore: SEQ 2 non trovato nella traccia"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              label: const Text("SIMULA RIDER ARRETRATO"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                final traccia = _trackManager.ottieniRoutePoints();
+                final p35 = traccia.cast<RoutePoint?>().firstWhere(
+                  (p) => p?.sequenceId == 35,
+                  orElse: () => null,
+                );
+
+                if (p35 != null) {
+                  setState(() {
+                    _ultimePosizioni['luigi'] = PosizioneGps(
+                      latitudine: p35.latitudine,
+                      longitudine: p35.longitudine,
+                      ultimoAggiornamento: DateTime.now(),
+                    );
+                    _processaMotoreV2();
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("🚀 LUIGI (Motociclista) posizionato a SEQ 35 (AHEAD)"),
+                      backgroundColor: Colors.purple,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("❌ Errore: SEQ 35 non trovato. Generare traccia più lunga."),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.trending_up),
+              label: const Text("SIMULA RIDER AHEAD (SEQ 35)"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
                 foregroundColor: Colors.white,
               ),
             ),
