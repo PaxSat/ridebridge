@@ -245,6 +245,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                     builder: (context) => SchermataStatoCarovana(
                       mioRuolo: widget.mioRuoloIniziale,
                       mioUid: _uid ?? "",
+                      idGruppo: widget.gruppo.id,
                     ),
                   ),
                 );

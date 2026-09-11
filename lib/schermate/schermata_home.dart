@@ -212,6 +212,7 @@ class _SchermataHomeState extends State<SchermataHome> {
                             builder: (context) => const SchermataStatoCarovana(
                               mioRuolo: RuoloGruppo.leader,
                               mioUid: "leader",
+                              idGruppo: null,
                             ),
                           ),
                         );

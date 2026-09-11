@@ -250,6 +250,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                           builder: (context) => SchermataStatoCarovana(
                             mioRuolo: mioRuolo.ruolo,
                             mioUid: _uid!,
+                            idGruppo: widget.gruppo.id,
                           ),
                         ),
                       );

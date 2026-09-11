@@ -11,6 +11,7 @@ import '../modelli/route_progress.dart';
 import '../modelli/engine_state.dart';
 import '../modelli/tail_state.dart';
 import '../servizi/servizio_posizione_fake.dart';
+import '../servizi/servizio_posizione_real.dart';
 import '../servizi/formation_manager.dart';
 import '../servizi/waypoint_manager.dart';
 import '../servizi/snake_formation_manager.dart';
@@ -20,11 +21,13 @@ import '../servizi/route_track_manager.dart';
 class SchermataStatoCarovana extends StatefulWidget {
   final RuoloGruppo mioRuolo;
   final String mioUid;
+  final String? idGruppo;
 
   const SchermataStatoCarovana({
     super.key,
     required this.mioRuolo,
     required this.mioUid,
+    this.idGruppo,
   });
 
   @override
@@ -38,6 +41,9 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   final _formation = FormationManager();
   final _waypointManager = WaypointManager();
   final _config = ConfigurazioneGruppo();
+
+  bool _usaGpsReale = false;
+  ServizioPosizioneReal? _servizioReal;
 
   Map<String, PosizioneGps> _ultimePosizioni = {};
   final Map<String, RouteProgress> _progressi = {};
@@ -53,15 +59,44 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   @override
   void initState() {
     super.initState();
-    _subscription = _fakeGps.streamPosizioni.listen((posizioni) {
-      if (mounted) {
-        setState(() {
-          _ultimePosizioni = posizioni;
-          _processaMotoreV2();
-        });
+    if (widget.idGruppo != null) {
+      _servizioReal = ServizioPosizioneReal(idGruppo: widget.idGruppo!, mioUid: widget.mioUid);
+    }
+    _cambiaSorgenteGps(false);
+  }
+
+  void _cambiaSorgenteGps(bool reale) {
+    _subscription?.cancel();
+    _fakeGps.fermaSimulazione();
+    _servizioReal?.ferma();
+
+    setState(() {
+      _usaGpsReale = reale;
+      // Reset stati per evitare conflitti tra simulazione e reale
+      _ultimePosizioni.clear();
+      _progressi.clear();
+      _messaggiNavigazione.clear();
+      _avvisiAttivi.clear();
+      _trackManager.reset();
+      _snakeManager.reset();
+
+      final stream = _usaGpsReale ? _servizioReal?.streamPosizioni : _fakeGps.streamPosizioni;
+
+      _subscription = stream?.listen((posizioni) {
+        if (mounted) {
+          setState(() {
+            _ultimePosizioni = posizioni;
+            _processaMotoreV2();
+          });
+        }
+      });
+
+      if (_usaGpsReale) {
+        _servizioReal?.avvia();
+      } else {
+        _fakeGps.avviaSimulazione();
       }
     });
-    _fakeGps.avviaSimulazione();
   }
 
   RoutePoint? _trovaRoutePointDaSequenceId(List<RoutePoint> traccia, int sequenceId) {
@@ -156,6 +191,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   void dispose() {
     _subscription?.cancel();
     _fakeGps.fermaSimulazione();
+    _servizioReal?.ferma();
     super.dispose();
   }
 
@@ -192,6 +228,24 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       color: Colors.orange.withValues(alpha: 0.1),
       child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("MODALITÀ GPS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Row(
+                children: [
+                  const Text("FAKE", style: TextStyle(fontSize: 10)),
+                  Switch(
+                    value: _usaGpsReale,
+                    onChanged: widget.idGruppo != null ? _cambiaSorgenteGps : null,
+                    activeThumbColor: Colors.green,
+                  ),
+                  const Text("REAL", style: TextStyle(fontSize: 10)),
+                ],
+              ),
+            ],
+          ),
+          const Divider(),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
