@@ -117,8 +117,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
         }
       }
 
-      final completedIds = minValidatedIndex > 0 
-          ? List.generate(minValidatedIndex, (i) => i) 
+      final completedIds = minValidatedIndex >= 0 
+          ? List.generate(minValidatedIndex + 1, (i) => i) 
           : <int>[];
 
       final stats = _trackManager.garbageCollection(
@@ -259,7 +259,9 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                   if (minIdx == -1 || p.lastValidatedIndex < minIdx) minIdx = p.lastValidatedIndex;
                 }
 
-                final completedIds = minIdx > 0 ? List.generate(minIdx, (i) => i) : <int>[];
+                final completedIds = minIdx >= 0 
+                    ? List.generate(minIdx + 1, (i) => i) 
+                    : <int>[];
                 
                 final stats = _trackManager.garbageCollection(
                   completedSequenceIds: completedIds,
