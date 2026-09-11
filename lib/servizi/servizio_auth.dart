@@ -106,4 +106,69 @@ class ServizioAuth {
     await _googleSignIn.signOut();
     await FirebaseAuth.instance.signOut();
   }
+
+  /// Elimina definitivamente l'account utente e i dati associati.
+  Future<void> eliminaAccount() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      throw Exception("Nessun utente autenticato.");
+    }
+
+    try {
+      // 1. Identificazione Provider per ri-autenticazione
+      final bool isGoogle = user.providerData.any((info) => info.providerId == 'google.com');
+
+      // 2. Fase di Certezza / Riautenticazione
+      if (isGoogle) {
+        // STEP 4: Per utenti Google Sign-In, tentiamo ri-autenticazione automatica
+        final GoogleSignInAccount? googleAccount = await _googleSignIn.signIn();
+        
+        if (googleAccount != null) {
+          final GoogleSignInAuthentication googleAuth = await googleAccount.authentication;
+          final AuthCredential credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          
+          // Riautenticazione per ottenere un token fresco
+          await user.reauthenticateWithCredential(credential);
+        } else {
+          // L'utente ha annullato il selettore Google, interrompiamo il processo
+          return;
+        }
+      } else {
+        // STEP 5: Per utenti Email/Password, verifichiamo la "freschezza" della sessione
+        // Se l'ultimo login è avvenuto più di 5 minuti fa, forziamo l'errore prima di Firestore
+        final lastSignIn = user.metadata.lastSignInTime;
+        final isRecent = lastSignIn != null && 
+            DateTime.now().difference(lastSignIn).inMinutes < 5;
+            
+        if (!isRecent) {
+          throw FirebaseAuthException(
+            code: 'requires-recent-login',
+            message: "Per eliminare l'account è necessario effettuare nuovamente l'accesso.",
+          );
+        }
+      }
+
+      // STEP 6: Solo dopo una riautenticazione valida procediamo con l'eliminazione
+      
+      // 3. Eliminazione dati Firestore (Sicura perché Auth è ancora attivo e la sessione è fresca)
+      await _servizioDatabase.eliminaDatiUtente(user.uid);
+
+      // 4. Eliminazione Firebase Auth
+      await user.delete();
+      
+      // 5. Logout per pulizia stato locale
+      await esci();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw Exception("Per eliminare l'account è necessario effettuare nuovamente l'accesso.");
+      }
+      rethrow;
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

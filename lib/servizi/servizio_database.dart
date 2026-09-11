@@ -58,4 +58,14 @@ class ServizioDatabase {
       debugPrint('Errore aggiornamento ultimo accesso: $e');
     }
   }
+
+  /// Elimina i dati dell'utente dal database.
+  Future<void> eliminaDatiUtente(String idUtente) async {
+    try {
+      await _utentiRef.doc(idUtente).delete();
+    } catch (e) {
+      debugPrint('Errore durante l\'eliminazione dei dati utente: $e');
+      rethrow;
+    }
+  }
 }

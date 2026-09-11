@@ -1,9 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../l10n/app_localizations.dart';
 
 /// Schermata che mostra le informazioni sull'app e lo sviluppatore.
-class SchermataInfo extends StatelessWidget {
+class SchermataInfo extends StatefulWidget {
   const SchermataInfo({super.key});
+
+  @override
+  State<SchermataInfo> createState() => _SchermataInfoState();
+}
+
+class _SchermataInfoState extends State<SchermataInfo> {
+  String _versione = "...";
+
+  @override
+  void initState() {
+    super.initState();
+    _inizializzaInfo();
+  }
+
+  Future<void> _inizializzaInfo() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _versione = "${packageInfo.version}+${packageInfo.buildNumber}";
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _versione = "N/D";
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +48,22 @@ class SchermataInfo extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
+            // Dedica
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              child: Text(
+                "Dedicata a mio figlio Francesco\n19 anni per sempre",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.redAccent,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
             // Logo o Icona App
             const Center(
               child: Hero(
@@ -58,9 +104,9 @@ class SchermataInfo extends StatelessWidget {
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
-                      _rigaInfo(context, Icons.person, l10n.developer, "Pasquale Cardillo Giuliano\n& Gemini & Copilot"),
+                      _rigaInfo(context, Icons.person, l10n.developer, "Pasquale Cardillo Giuliano\nGemini & Copilot"),
                       const Divider(height: 32),
-                      _rigaInfo(context, Icons.info_outline, l10n.version, "1.0.13+14"),
+                      _rigaInfo(context, Icons.info_outline, l10n.version, _versione),
                     ],
                   ),
                 ),
