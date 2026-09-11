@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../modelli/route_point.dart';
 import '../modelli/route_progress.dart';
 import '../modelli/posizione_gps.dart';
@@ -107,6 +108,8 @@ class SnakeFormationManager {
         distDalPunto = dist;
       }
     }
+
+    debugPrint('[GEOREF] Walking uid=$uid targetListIndex=$targetListIndex nuovoValidatoSeqId=$nuovoValidatoSeqId distDalPunto=$distDalPunto');
 
     RouteProgress nuovoProgress;
 

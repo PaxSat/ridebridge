@@ -35,7 +35,7 @@ class SchermataStatoCarovana extends StatefulWidget {
   State<SchermataStatoCarovana> createState() => _SchermataStatoCarovanaState();
 }
 
-class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
+class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> with WidgetsBindingObserver {
   final _fakeGps = ServizioPosizioneFake();
   final _trackManager = RouteTrackManager();
   final _snakeManager = SnakeFormationManager();
@@ -45,6 +45,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
   bool _usaGpsReale = false;
   ServizioPosizioneReal? _servizioReal;
+  bool _gpsDisabilitato = false;
 
   Map<String, PosizioneGps> _ultimePosizioni = {};
   final Map<String, RouteProgress> _progressi = {};
@@ -53,6 +54,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   TailState? _tailState;
   StreamSubscription? _subscription;
   StreamSubscription? _localGpsSubscription;
+  StreamSubscription<bool>? _gpsStatusSubscription;
 
   // Debug GC Stats
   int _gcEliminatiPassati = 0;
@@ -61,20 +63,38 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (widget.idGruppo != null) {
       _servizioReal = ServizioPosizioneReal(idGruppo: widget.idGruppo!, mioUid: widget.mioUid);
     }
     _cambiaSorgenteGps(false);
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _usaGpsReale) {
+      _controllaGpsManualmente();
+    }
+  }
+
+  Future<void> _controllaGpsManualmente() async {
+    if (_servizioReal == null) return;
+    final attivo = await _servizioReal!.isGpsAbilitato();
+    if (mounted) {
+      setState(() => _gpsDisabilitato = !attivo);
+    }
+  }
+
   void _cambiaSorgenteGps(bool reale) {
     _subscription?.cancel();
     _localGpsSubscription?.cancel();
+    _gpsStatusSubscription?.cancel();
     _fakeGps.fermaSimulazione();
     _servizioReal?.ferma();
 
     setState(() {
       _usaGpsReale = reale;
+      _gpsDisabilitato = false;
       // Reset stati per evitare conflitti tra simulazione e reale
       _ultimePosizioni.clear();
       _progressi.clear();
@@ -97,6 +117,12 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       if (_usaGpsReale) {
         _servizioReal?.avvia();
         _avviaBroadcastGpsReale();
+        
+        _gpsStatusSubscription = _servizioReal?.streamStatoGps.listen((attivo) {
+          if (mounted) {
+            setState(() => _gpsDisabilitato = !attivo);
+          }
+        });
       } else {
         _fakeGps.avviaSimulazione();
       }
@@ -105,26 +131,40 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
   /// Avvia il broadcast della propria posizione reale su Firestore.
   Future<void> _avviaBroadcastGpsReale() async {
+    debugPrint('[GEOREF] Broadcast GPS avviato');
     bool serviceEnabled;
     LocationPermission permission;
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    debugPrint('[GEOREF] serviceEnabled=$serviceEnabled');
+    if (!serviceEnabled) {
+      debugPrint('[GEOREF] EXIT motivo=serviceDisabled');
+      return;
+    }
 
     permission = await Geolocator.checkPermission();
+    debugPrint('[GEOREF] permission=$permission');
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) {
+        debugPrint('[GEOREF] EXIT motivo=permissionDenied');
+        return;
+      }
     }
     
-    if (permission == LocationPermission.deniedForever) return;
+    if (permission == LocationPermission.deniedForever) {
+      debugPrint('[GEOREF] EXIT motivo=permissionDeniedForever');
+      return;
+    }
 
+    debugPrint('[GEOREF] PositionStream avviato');
     _localGpsSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 5,
       ),
     ).listen((Position position) {
+      debugPrint('[GEOREF] GPS lat=${position.latitude} lon=${position.longitude} speed=${position.speed} heading=${position.heading}');
       final pos = PosizioneGps(
         latitudine: position.latitude,
         longitudine: position.longitude,
@@ -134,6 +174,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
         ultimoAggiornamento: position.timestamp,
       );
       
+      debugPrint('[GEOREF] Update Firestore richiesto');
       _servizioReal?.aggiornaMiaPosizione(pos);
     });
   }
@@ -150,13 +191,22 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     final leaderKey = _usaGpsReale ? (_servizioReal?.leaderUid ?? '') : 'leader';
     final scopaKey = _usaGpsReale ? (_servizioReal?.scopaUid ?? '') : 'scopa';
 
+    debugPrint('[GEOREF] leaderUid=$leaderKey');
+    debugPrint('[GEOREF] scopaUid=$scopaKey');
+
     final leaderPos = _ultimePosizioni[leaderKey];
+    debugPrint('[GEOREF] leaderPos=${leaderPos != null}');
     if (leaderPos == null) return;
 
     // 1. Il Leader genera la traccia
     _trackManager.aggiungiPosizioneLeader(leaderPos);
+    debugPrint('[GEOREF] RoutePoints count=${_trackManager.ottieniRoutePoints().length}');
+
     final traccia = _trackManager.ottieniRoutePoints();
+    debugPrint('[GEOREF] lunghezzaPercorso=${_trackManager.lunghezzaPercorso()}');
+
     final leaderSeqId = _trackManager.ultimoRoutePoint()?.sequenceId ?? 0;
+    debugPrint('[GEOREF] ultimoSequenceId=${_trackManager.ultimoRoutePoint()?.sequenceId ?? 'N/A'}');
 
     // 2. I partecipanti camminano sullo Snake
     _ultimePosizioni.forEach((uid, pos) {
@@ -231,8 +281,10 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _subscription?.cancel();
     _localGpsSubscription?.cancel();
+    _gpsStatusSubscription?.cancel();
     _fakeGps.fermaSimulazione();
     _servizioReal?.ferma();
     super.dispose();
@@ -255,6 +307,35 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       appBar: AppBar(title: Text("📍 ${l10n.caravanStatus}"), centerTitle: true),
       body: Column(
         children: [
+          if (_usaGpsReale && _gpsDisabilitato)
+            Container(
+              width: double.infinity,
+              color: Colors.red,
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.location_off, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "GPS DISABILITATO!",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () => Geolocator.openLocationSettings(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text("ATTIVA ORA", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
           _costruisciHeader(),
           const Divider(thickness: 2),
           _costruisciListaMembri(visibilitaCompleta),
