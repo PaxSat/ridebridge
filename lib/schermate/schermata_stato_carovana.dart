@@ -108,7 +108,10 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   }
 
   void _processaMotoreV2() {
-    final leaderPos = _ultimePosizioni['leader'];
+    final leaderKey = _usaGpsReale ? (_servizioReal?.leaderUid ?? '') : 'leader';
+    final scopaKey = _usaGpsReale ? (_servizioReal?.scopaUid ?? '') : 'scopa';
+
+    final leaderPos = _ultimePosizioni[leaderKey];
     if (leaderPos == null) return;
 
     // 1. Il Leader genera la traccia
@@ -165,8 +168,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     }
 
     // 5. Analisi stati e messaggi
-    final leaderProgress = _progressi['leader']?.routeProgress ?? 0.0;
-    final scopaProgress = _progressi['scopa']?.routeProgress;
+    final leaderProgress = _progressi[leaderKey]?.routeProgress ?? 0.0;
+    final scopaProgress = _progressi[scopaKey]?.routeProgress;
 
     _ultimePosizioni.forEach((uid, pos) {
       final p = _progressi[uid]!;
@@ -196,7 +199,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   }
 
   Future<void> _navigaAlLeader() async {
-    final leader = _ultimePosizioni['leader'];
+    final leaderKey = _usaGpsReale ? (_servizioReal?.leaderUid ?? '') : 'leader';
+    final leader = _ultimePosizioni[leaderKey];
     if (leader == null) return;
     final uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${leader.latitudine},${leader.longitudine}");
     if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -220,7 +224,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   }
 
   Widget _costruisciHeader() {
-    final leader = _ultimePosizioni['leader'];
+    final leaderKey = _usaGpsReale ? (_servizioReal?.leaderUid ?? '') : 'leader';
+    final leader = _ultimePosizioni[leaderKey];
     final traccia = _trackManager.ottieniRoutePoints();
 
     return Container(

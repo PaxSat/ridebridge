@@ -10,6 +10,9 @@ class ServizioPosizioneReal {
   final String mioUid;
   final _servizioGruppi = ServizioGruppi();
   
+  String? leaderUid;
+  String? scopaUid;
+
   final _controller = StreamController<Map<String, PosizioneGps>>.broadcast();
   StreamSubscription? _subscription;
 
@@ -31,8 +34,17 @@ class ServizioPosizioneReal {
         .listen((snapshot) {
       final Map<String, PosizioneGps> posizioni = {};
       
+      leaderUid = null;
+      scopaUid = null;
+
       for (var doc in snapshot.docs) {
         final dati = doc.data();
+        
+        // Identificazione dinamica dei ruoli
+        final ruolo = dati['ruolo'];
+        if (ruolo == 'leader') leaderUid = doc.id;
+        if (ruolo == 'scopa') scopaUid = doc.id;
+
         if (dati.containsKey('posizioneGps')) {
           posizioni[doc.id] = PosizioneGps.daMappa(dati['posizioneGps'] as Map<String, dynamic>);
         }
