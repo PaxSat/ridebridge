@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import '../modelli/posizione_gps.dart';
+import '../modelli/partecipante_gruppo.dart';
 import 'servizio_gruppi.dart';
 
-/// Servizio reale per la gestione delle posizioni GPS (GeoRef V2).
-/// Utilizza Firestore per le posizioni dei compagni e si predispone per Geolocator.
+/// Servizio reale per la gestione delle posizioni GPS (GeoRef V3).
 class ServizioPosizioneReal {
   final String idGruppo;
   final String mioUid;
@@ -15,15 +15,15 @@ class ServizioPosizioneReal {
   String? leaderUid;
   String? scopaUid;
 
-  final _controller = StreamController<Map<String, PosizioneGps>>.broadcast();
+  final _controller = StreamController<Map<String, PartecipanteGruppo>>.broadcast();
   final _gpsController = StreamController<bool>.broadcast();
   StreamSubscription? _subscription;
   Timer? _gpsTimer;
 
   ServizioPosizioneReal({required this.idGruppo, required this.mioUid});
 
-  /// Stream che emette le posizioni reali aggregate di tutti i partecipanti.
-  Stream<Map<String, PosizioneGps>> get streamPosizioni => _controller.stream;
+  /// Stream che emette la mappa completa dei partecipanti compresi i flag.
+  Stream<Map<String, PartecipanteGruppo>> get streamPosizioni => _controller.stream;
 
   /// Stream che emette lo stato del servizio GPS (abilitato/disabilitato).
   Stream<bool> get streamStatoGps => _gpsController.stream;
@@ -44,21 +44,21 @@ class ServizioPosizioneReal {
         .collection('partecipanti')
         .snapshots()
         .listen((snapshot) {
-      final Map<String, PosizioneGps> posizioni = {};
+      final Map<String, PartecipanteGruppo> posizioni = {};
       
       leaderUid = null;
       scopaUid = null;
 
       for (var doc in snapshot.docs) {
         final dati = doc.data();
+        final part = PartecipanteGruppo.daMappa(dati, doc.id);
         
         // Identificazione dinamica dei ruoli
-        final ruolo = dati['ruolo'];
-        if (ruolo == 'leader') leaderUid = doc.id;
-        if (ruolo == 'scopa') scopaUid = doc.id;
+        if (part.ruolo == RuoloGruppo.leader) leaderUid = doc.id;
+        if (part.ruolo == RuoloGruppo.scopa) scopaUid = doc.id;
 
-        if (dati.containsKey('posizioneGps')) {
-          posizioni[doc.id] = PosizioneGps.daMappa(dati['posizioneGps'] as Map<String, dynamic>);
+        if (part.posizioneGps != null) {
+          posizioni[doc.id] = part;
         }
       }
       

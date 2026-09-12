@@ -333,6 +333,19 @@ class ServizioGruppi {
 
   // --- LOGICA PRESENZA E STATO AUDIO ---
 
+  /// Aggiorna lo stato di partecipazione attiva (Carovana) di un utente.
+  Future<void> aggiornaPartecipazione(String idGruppo, String idUtente, bool partecipando) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('partecipanti')
+          .doc(idUtente)
+          .update({'partecipando': partecipando});
+    } catch (e) {
+      debugPrint('Errore aggiornaPartecipazione: $e');
+    }
+  }
+
   /// Aggiorna lo stato di presenza (online/offline) di un partecipante.
   Future<void> aggiornaPresenza(String idGruppo, String idUtente, bool online) async {
     try {

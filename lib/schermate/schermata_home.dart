@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_auth.dart';
 import '../servizi/servizio_database.dart';
+import '../servizi/debug_manager.dart';
 import 'schermata_login.dart';
 import 'schermata_crea_gruppo.dart';
 import 'schermata_miei_gruppi.dart';
@@ -26,20 +27,21 @@ class _SchermataHomeState extends State<SchermataHome> {
   final _servizioAuth = ServizioAuth();
   final _firebaseUser = FirebaseAuth.instance.currentUser;
 
-  // Gestione Modalità Debug Nascosta
+  // Gestione Modalità Debug Centralizzata
   int _clickDebugCount = 0;
-  bool _debugModeAbilitato = false;
 
   void _gestisciClickImmagine() {
     setState(() {
       _clickDebugCount++;
-      if (_clickDebugCount >= 3) {
-        _debugModeAbilitato = true;
+      if (_clickDebugCount >= 5) {
+        final dm = DebugManager();
+        dm.debugMode = !dm.debugMode;
+        _clickDebugCount = 0; // reset contatore
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("🛠️ Modalità Debug Abilitata"),
-            backgroundColor: Colors.deepPurple,
-            duration: Duration(seconds: 1),
+          SnackBar(
+            content: Text(dm.debugMode ? "🛠️ Modalità Debug Abilitata" : "🔒 Modalità Debug Disabilitata"),
+            backgroundColor: dm.debugMode ? Colors.deepPurple : Colors.grey,
+            duration: const Duration(seconds: 1),
           ),
         );
       }
@@ -198,7 +200,7 @@ class _SchermataHomeState extends State<SchermataHome> {
                       setState(() {});
                     },
                   ),
-                  if (_debugModeAbilitato) ...[
+                  if (DebugManager().debugMode) ...[
                     const SizedBox(height: 16),
                     _costruisciBottoneAzione(
                       context: context,

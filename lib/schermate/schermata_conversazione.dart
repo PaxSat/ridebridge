@@ -43,6 +43,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   PartecipanteGruppo? _mioStatoLocale;
   StatoCarovana _mioStatoCarovana = StatoCarovana.inGroup;
   PosizioneGps? _posLeader;
+  bool _stoPartecipando = false;
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   void dispose() {
     if (_uid != null) {
       _servizioGruppi.aggiornaPresenza(widget.gruppo.id, _uid, false);
+      _servizioGruppi.aggiornaPartecipazione(widget.gruppo.id, _uid, false);
     }
     super.dispose();
   }
@@ -122,52 +124,60 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           .collection('gruppi')
           .doc(widget.gruppo.id)
           .collection('partecipanti')
-          .where('online', isEqualTo: true) // Filtriamo solo gli utenti online
+          // online o partecipando attivi
           .snapshots()
           .map((snapshot) => snapshot.docs
               .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
               .toList()),
       builder: (context, snapshot) {
-        var partecipanti = snapshot.data ?? [];
+        var tuttiPartecipanti = snapshot.data ?? [];
+        
+        // Filtriamo gli utenti online per la chat e l'interfono
+        var partecipantiOnline = tuttiPartecipanti.where((p) => p.online == true).toList();
         
         final Map<String, StatoCarovana> statiCarovanaMembri = {};
 
         // Sincronizziamo lo stato locale con i dati Firestore per l'utente corrente
         PartecipanteGruppo? leader;
 
-        if (_uid != null && partecipanti.isNotEmpty) {
+        if (_uid != null && tuttiPartecipanti.isNotEmpty) {
           try {
-            final me = partecipanti.firstWhere((p) => p.idUtente == _uid);
+            final me = tuttiPartecipanti.firstWhere((p) => p.idUtente == _uid);
             _mioStatoLocale = me;
+            _stoPartecipando = me.partecipando;
             _sosAttivo = me.statoAudio?.emergenzaAttiva ?? false;
             _canaleSpecialeAttivo = me.statoAudio?.canaleSpecialeAttivo ?? false;
 
-            leader = partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.leader);
+            leader = tuttiPartecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.leader);
             _posLeader = leader.posizioneGps;
             
-            final scopaProgress = partecipanti.any((p) => p.ruolo == RuoloGruppo.scopa) 
-                ? _snakeManager.ottieniProgress(partecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.scopa).idUtente)?.routeProgress 
+            final scopaProgress = tuttiPartecipanti.any((p) => p.ruolo == RuoloGruppo.scopa && p.partecipando) 
+                ? _snakeManager.ottieniProgress(tuttiPartecipanti.firstWhere((p) => p.ruolo == RuoloGruppo.scopa).idUtente)?.routeProgress 
                 : null;
             final leaderProgress = _snakeManager.ottieniProgress(leader.idUtente)?.routeProgress ?? 0.0;
 
-            for (var p in partecipanti) {
-              statiCarovanaMembri[p.idUtente] = _snakeManager.determinaStato(
-                uid: p.idUtente,
-                leaderProgress: leaderProgress,
-                scopaProgress: scopaProgress,
-                maxGroupDistance: widget.gruppo.configurazione.distanzaMassimaGruppo,
-              );
+            for (var p in tuttiPartecipanti) {
+              if (p.partecipando) {
+                statiCarovanaMembri[p.idUtente] = _snakeManager.determinaStato(
+                  uid: p.idUtente,
+                  leaderProgress: leaderProgress,
+                  scopaProgress: scopaProgress,
+                  maxGroupDistance: widget.gruppo.configurazione.distanzaMassimaGruppo,
+                );
+              } else {
+                statiCarovanaMembri[p.idUtente] = StatoCarovana.inGroup; 
+              }
             }
 
             _mioStatoCarovana = statiCarovanaMembri[_uid] ?? StatoCarovana.inGroup;
           } catch (_) {}
         }
 
-        // ORDINAMENTO PER PROGRESSIONE REALE (Snake Order)
-        partecipanti.sort((a, b) {
+        // ORDINAMENTO PER PROGRESSIONE REALE (Snake Order) per chi partecipa
+        partecipantiOnline.sort((a, b) {
           final progA = _snakeManager.ottieniProgress(a.idUtente)?.routeProgress ?? 0.0;
           final progB = _snakeManager.ottieniProgress(b.idUtente)?.routeProgress ?? 0.0;
-          return progB.compareTo(progA); // Leader in cima (più progressione)
+          return progB.compareTo(progA); // Leader in cima
         });
 
         return Scaffold(
@@ -179,6 +189,24 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           body: Column(
             children: [
               _costruisciHeaderControlli(),
+              if (!_stoPartecipando)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    onPressed: () {
+                      if (_uid != null) {
+                        _servizioGruppi.aggiornaPartecipazione(widget.gruppo.id, _uid, true);
+                      }
+                    },
+                    icon: const Icon(Icons.play_arrow),
+                    label: Text(l10n.joinLive),
+                  ),
+                ),
               _costruisciSezioneParlante(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -190,7 +218,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                   ],
                 ),
               ),
-              Expanded(child: _costruisciListaPartecipanti(partecipanti, statiCarovanaMembri)),
+              Expanded(child: _costruisciListaPartecipanti(partecipantiOnline, statiCarovanaMembri)),
             ],
           ),
         );
@@ -233,7 +261,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               colore: Colors.blue,
               onTap: _navigaAlLeader,
             )
-          else
+          else if (_stoPartecipando)
             _bottoneCircolare(
               icona: Icons.location_on,
               etichetta: l10n.caravanStatus.split(' ')[1].toUpperCase(), // "CAROVANA"

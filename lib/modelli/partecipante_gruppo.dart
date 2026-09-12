@@ -18,6 +18,7 @@ class PartecipanteGruppo {
   final bool audioConsentito;
   final bool emergenzaAbilitata;
   final bool online;
+  final bool partecipando;
   final DateTime? ultimoAccesso;
   final StatoAudio? statoAudio;
   final PosizioneGps? posizioneGps;
@@ -29,6 +30,7 @@ class PartecipanteGruppo {
     this.audioConsentito = true,
     this.emergenzaAbilitata = true,
     this.online = false,
+    this.partecipando = false,
     this.ultimoAccesso,
     this.statoAudio,
     this.posizioneGps,
@@ -46,6 +48,7 @@ class PartecipanteGruppo {
       audioConsentito: mappa['audioConsentito'] ?? true,
       emergenzaAbilitata: mappa['emergenzaAbilitata'] ?? true,
       online: mappa['online'] ?? false,
+      partecipando: mappa['partecipando'] ?? false,
       ultimoAccesso: (mappa['ultimoAccesso'] as Timestamp?)?.toDate(),
       statoAudio: mappa['statoAudio'] != null 
           ? StatoAudio.daMappa(mappa['statoAudio'] as Map<String, dynamic>) 
@@ -64,6 +67,7 @@ class PartecipanteGruppo {
       'audioConsentito': audioConsentito,
       'emergenzaAbilitata': emergenzaAbilitata,
       'online': online,
+      'partecipando': partecipando,
       'ultimoAccesso': ultimoAccesso != null ? Timestamp.fromDate(ultimoAccesso!) : null,
       'statoAudio': statoAudio?.aMappa(),
       'posizioneGps': posizioneGps?.aMappa(),
@@ -77,6 +81,7 @@ class PartecipanteGruppo {
     bool? audioConsentito,
     bool? emergenzaAbilitata,
     bool? online,
+    bool? partecipando,
     DateTime? ultimoAccesso,
     StatoAudio? statoAudio,
     PosizioneGps? posizioneGps,
@@ -88,6 +93,7 @@ class PartecipanteGruppo {
       audioConsentito: audioConsentito ?? this.audioConsentito,
       emergenzaAbilitata: emergenzaAbilitata ?? this.emergenzaAbilitata,
       online: online ?? this.online,
+      partecipando: partecipando ?? this.partecipando,
       ultimoAccesso: ultimoAccesso ?? this.ultimoAccesso,
       statoAudio: statoAudio ?? this.statoAudio,
       posizioneGps: posizioneGps ?? this.posizioneGps,
