@@ -9,10 +9,8 @@ import 'schermata_login.dart';
 import 'schermata_crea_gruppo.dart';
 import 'schermata_miei_gruppi.dart';
 import 'schermata_entra_gruppo.dart';
-import '../modelli/partecipante_gruppo.dart';
 import 'schermata_profilo.dart';
 import 'schermata_info.dart';
-import 'schermata_stato_carovana.dart';
 
 /// Schermata principale dell'applicazione dopo il login.
 class SchermataHome extends StatefulWidget {
@@ -200,27 +198,6 @@ class _SchermataHomeState extends State<SchermataHome> {
                       setState(() {});
                     },
                   ),
-                  if (DebugManager().debugMode) ...[
-                    const SizedBox(height: 16),
-                    _costruisciBottoneAzione(
-                      context: context,
-                      icona: Icons.bug_report_outlined,
-                      etichetta: "DEBUG GEOREF",
-                      colore: Colors.deepPurple,
-                      azione: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SchermataStatoCarovana(
-                              mioRuolo: RuoloGruppo.leader,
-                              mioUid: "leader",
-                              idGruppo: null,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
                   const SizedBox(height: 40),
                   const Divider(),
                   const Text(

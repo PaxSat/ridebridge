@@ -1,25 +1,15 @@
-import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import '../l10n/app_localizations.dart';
-import '../modelli/posizione_gps.dart';
-import '../modelli/configurazione_gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
-import '../modelli/avviso_carovana.dart';
-import '../modelli/route_progress.dart';
-import '../modelli/engine_state.dart';
-import '../modelli/tail_state.dart';
-import '../servizi/servizio_posizione_fake.dart';
-import '../servizi/servizio_posizione_real.dart';
-import '../servizi/formation_manager.dart';
-import '../servizi/waypoint_manager.dart';
-import '../servizi/snake_formation_manager.dart';
-import '../servizi/route_track_manager.dart';
+import '../modelli/utente.dart';
+import '../servizi/georef_controller.dart';
+import '../servizi/servizio_database.dart';
 import '../servizi/debug_manager.dart';
-import '../servizi/leader_engine.dart';
-import '../servizi/follower_engine.dart';
+import '../servizi/location_evaluator.dart';
 
-/// Schermata per monitorare lo stato della carovana (GeoRef V3) con Sezione Debug Condizionale.
+/// Schermata passiva per il monitoraggio della carovana (GeoRef V3).
+/// Osserva il GeoRefController persistente. Se debug attivo, permette input al simulatore.
 class SchermataStatoCarovana extends StatefulWidget {
   final RuoloGruppo mioRuolo;
   final String mioUid;
@@ -36,291 +26,193 @@ class SchermataStatoCarovana extends StatefulWidget {
   State<SchermataStatoCarovana> createState() => _SchermataStatoCarovanaState();
 }
 
-class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> with WidgetsBindingObserver {
-  final _fakeGps = ServizioPosizioneFake();
-  final _trackManager = RouteTrackManager();
-  final _snakeManager = SnakeFormationManager();
-  final _formation = FormationManager();
-  final _waypointManager = WaypointManager();
-  final _config = ConfigurazioneGruppo();
-
-  late LeaderEngine _leaderEngine;
-  late FollowerEngine _followerEngine;
-
-  bool _usaGpsReale = false;
-  ServizioPosizioneReal? _servizioReal;
-  bool _gpsDisabilitato = false;
-
-  // Cache per mappare le informazioni complete provenienti dai due diversi flussi
-  final Map<String, PartecipanteGruppo> _snapshotRidersCompleti = {};
-  Map<String, PosizioneGps> _ultimePosizioni = {};
-  final Map<String, RouteProgress> _progressi = {};
-  final Map<String, String?> _messaggiNavigazione = {};
-  final Map<String, AvvisoCarovana?> _avvisiAttivi = {};
-  TailState? _tailState;
-  StreamSubscription? _subscription;
-  StreamSubscription? _localGpsSubscription;
-  StreamSubscription<bool>? _gpsStatusSubscription;
-
-  // Stato Simulatore Fake V3
+class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
+  final ServizioDatabase _servizioDatabase = ServizioDatabase();
   String _riderSelezionato = 'leader';
   double _metriSpostamento = 25.0;
+
+  // Cache per i nomi dei rider nel pannello debug
+  final Map<String, String> _nomiCache = {};
+  
+  late final TextEditingController _latController;
+  late final TextEditingController _lonController;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    
-    _leaderEngine = LeaderEngine(_trackManager);
-    _followerEngine = FollowerEngine(_snakeManager);
-
-    if (widget.idGruppo != null) {
-      _servizioReal = ServizioPosizioneReal(idGruppo: widget.idGruppo!, mioUid: widget.mioUid);
-    }
-    
-    // Inizializza in base al DebugManager globale
-    _usaGpsReale = !DebugManager().gpsFake;
-    _cambiaSorgenteGps(_usaGpsReale);
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _usaGpsReale) {
-      _controllaGpsManualmente();
-    }
-  }
-
-  Future<void> _controllaGpsManualmente() async {
-    if (_servizioReal == null) return;
-    final attivo = await _servizioReal!.isGpsAbilitato();
-    if (mounted) {
-      setState(() => _gpsDisabilitato = !attivo);
-    }
-  }
-
-  void _cambiaSorgenteGps(bool reale) {
-    _subscription?.cancel();
-    _localGpsSubscription?.cancel();
-    _gpsStatusSubscription?.cancel();
-    _fakeGps.fermaSimulazione();
-    _servizioReal?.ferma();
-
-    setState(() {
-      _usaGpsReale = reale;
-      DebugManager().gpsFake = !reale;
-      _gpsDisabilitato = false;
-      
-      _ultimePosizioni.clear();
-      _snapshotRidersCompleti.clear();
-      _progressi.clear();
-      _messaggiNavigazione.clear();
-      _avvisiAttivi.clear();
-      _leaderEngine.reset();
-      _followerEngine.reset();
-
-      if (_usaGpsReale) {
-        _subscription = _servizioReal?.streamPosizioni.listen((mappaPartecipanti) {
-          if (mounted) {
-            setState(() {
-              _snapshotRidersCompleti.clear();
-              _snapshotRidersCompleti.addAll(mappaPartecipanti);
-              
-              _ultimePosizioni.clear();
-              mappaPartecipanti.forEach((uid, p) {
-                if (p.posizioneGps != null) {
-                  _ultimePosizioni[uid] = p.posizioneGps!;
-                }
-              });
-
-              _processaMotoreV3();
-            });
-          }
-        });
-
-        _servizioReal?.avvia();
-        _avviaBroadcastGpsReale();
-      } else {
-        _subscription = _fakeGps.streamPosizioni.listen((posizioni) {
-          if (mounted) {
-            setState(() {
-              _ultimePosizioni = posizioni;
-              
-              // In modalità FAKE creiamo snap virtuali con partecipando=true per simulare
-              _snapshotRidersCompleti.clear();
-              posizioni.forEach((uid, gps) {
-                _snapshotRidersCompleti[uid] = PartecipanteGruppo(
-                  idUtente: uid,
-                  ruolo: uid == 'leader' ? RuoloGruppo.leader : (uid == 'scopa' ? RuoloGruppo.scopa : RuoloGruppo.partecipante),
-                  partecipando: true, // Tutti i rider immessi nel simulatore sono attivi
-                  posizioneGps: gps,
-                );
-              });
-
-              _processaMotoreV3();
-            });
-          }
-        });
-        _fakeGps.avviaSimulazione();
-      }
-        
-      _gpsStatusSubscription = _servizioReal?.streamStatoGps.listen((attivo) {
-        if (mounted) {
-          setState(() => _gpsDisabilitato = !attivo);
-        }
-      });
-    });
-  }
-
-  Future<void> _avviaBroadcastGpsReale() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
-    if (permission == LocationPermission.deniedForever) return;
-
-    _localGpsSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5),
-    ).listen((Position position) {
-      final pos = PosizioneGps(
-        latitudine: position.latitude,
-        longitudine: position.longitude,
-        altitudine: position.altitude,
-        velocita: position.speed,
-        direzione: position.heading,
-        ultimoAggiornamento: position.timestamp,
-      );
-      _servizioReal?.aggiornaMiaPosizione(pos);
-    });
-  }
-
-  void _processaMotoreV3() {
-    final leaderKey = _usaGpsReale ? (_servizioReal?.leaderUid ?? '') : 'leader';
-    final scopaKey = _usaGpsReale ? (_servizioReal?.scopaUid ?? '') : 'scopa';
-
-    final leaderPos = _ultimePosizioni[leaderKey];
-    if (leaderPos == null) return;
-
-    // Conteggio dei soli partecipanti attivi (partecipando == true)
-    final partecipantiAttivi = _snapshotRidersCompleti.values.where((p) => p.partecipando).toList();
-    final int numeroPartecipantiAttivi = partecipantiAttivi.length;
-
-    // 1. LeaderEngine costruisce lo snake condizionato alla modalità Ghost
-    _leaderEngine.processaPosizioneLeader(leaderPos, numeroPartecipantiAttivi);
-
-    final traccia = _leaderEngine.ottieniRoutePoints();
-    final leaderSeqId = _leaderEngine.ultimoRoutePoint()?.sequenceId ?? 0;
-
-    // REGOLE SNAKE: RoutePoints >= 2 altrimenti WAITING_SNAKE implicito negli stati
-    final bool snakeValido = traccia.length >= 2;
-
-    // 2. SOLO I PARTECIPANTI ATTIVI camminano sullo Snake
-    _snapshotRidersCompleti.forEach((uid, rider) {
-      if (rider.partecipando && rider.posizioneGps != null) {
-        final progress = _followerEngine.aggiornaPosizionePartecipante(
-          uid: uid,
-          pos: rider.posizioneGps!,
-          traccia: traccia,
-          leaderSequenceId: leaderSeqId,
-        );
-        _progressi[uid] = progress;
-      }
-    });
-
-    // 3. Calcolo TailState (I manager interni valutano le progressioni calcolate sopra dei soli attivi)
-    _tailState = _snakeManager.calcolaTailState();
-
-    // 4. Garbage Collection ordinaria basata ESCLUSIVAMENTE su chi sta partecipando
-    if (partecipantiAttivi.isNotEmpty && snakeValido) {
-      int minValidatedIndex = -1;
-      for (var rider in partecipantiAttivi) {
-        final p = _progressi[rider.idUtente];
-        if (p == null) continue;
-        if (p.lastValidatedIndex == -1) {
-          minValidatedIndex = -1;
-          break;
-        }
-        if (minValidatedIndex == -1 || p.lastValidatedIndex < minValidatedIndex) {
-          minValidatedIndex = p.lastValidatedIndex;
-        }
-      }
-
-      final completedIds = minValidatedIndex >= 0 
-          ? List.generate(minValidatedIndex + 1, (i) => i) 
-          : <int>[];
-
-      _leaderEngine.eseguiGarbageCollection(
-        completedSequenceIds: completedIds,
-        distanzaMassimaGruppo: _config.distanzaMassimaGruppo,
-      );
-    }
-
-    // 5. Analisi degli stati operativi solo per chi partecipa attivamente
-    final leaderProgress = _progressi[leaderKey]?.routeProgress ?? 0.0;
-    final scopaProgress = _progressi[scopaKey]?.routeProgress;
-
-    _snapshotRidersCompleti.forEach((uid, rider) {
-      if (rider.partecipando && rider.posizioneGps != null) {
-        final p = _progressi[uid]!;
-        final stato = _snakeManager.determinaStato(
-          uid: uid,
-          leaderProgress: leaderProgress,
-          scopaProgress: scopaProgress,
-          maxGroupDistance: _config.distanzaMassimaGruppo,
-        );
-        
-        _avvisiAttivi[uid] = _formation.generaAvviso(uid, p.engineState, stato);
-        
-        final targetPoint = p.nextTargetIndex < traccia.length && p.nextTargetIndex >= 0 ? traccia[p.nextTargetIndex] : null;
-        _messaggiNavigazione[uid] = _waypointManager.ottieniIstruzioneNavigazione(
-          rider.posizioneGps!, targetPoint, _config.triggerDistanceMeters, p.engineState
-        );
-      }
-    });
+    final dm = DebugManager();
+    _latController = TextEditingController(text: dm.latFake.toString());
+    _lonController = TextEditingController(text: dm.lonFake.toString());
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _subscription?.cancel();
-    _localGpsSubscription?.cancel();
-    _gpsStatusSubscription?.cancel();
-    _fakeGps.fermaSimulazione();
-    _servizioReal?.ferma();
+    _latController.dispose();
+    _lonController.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final bool visibilitaCompleta = widget.mioRuolo == RuoloGruppo.leader || widget.mioRuolo == RuoloGruppo.scopa;
-    final bool debugAttivo = DebugManager().debugMode;
+    final controller = GeoRefController();
 
-    return Scaffold(
-      appBar: AppBar(title: Text("📍 ${l10n.caravanStatus}"), centerTitle: true),
-      body: Column(
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        // Risoluzione pigra dei nomi per il pannello debug
+        for (var uid in controller.snapshotRidersCompleti.keys) {
+          if (!_nomiCache.containsKey(uid)) {
+            _nomiCache[uid] = "..."; // Placeholder caricamento
+            _servizioDatabase.leggiUtente(uid).then((utente) {
+              if (mounted) {
+                setState(() {
+                  _nomiCache[uid] = utente?.nickname?.isNotEmpty == true
+                      ? utente!.nickname!
+                      : (utente?.nome ?? uid.substring(0, math.min(uid.length, 6)));
+                });
+              }
+            });
+          }
+        }
+
+        return ListenableBuilder(
+          listenable: DebugManager(),
+          builder: (context, _) {
+            final bool debugAttivo = DebugManager().debugMode;
+            final bool visibilitaCompleta = widget.mioRuolo == RuoloGruppo.leader || widget.mioRuolo == RuoloGruppo.scopa;
+
+            return Scaffold(
+              appBar: AppBar(
+                title: Text("📍 ${l10n.caravanStatus}"),
+                centerTitle: true,
+                actions: [
+                  if (controller.isAttivo)
+                    TextButton(
+                      onPressed: () => _confermaAbbandona(context, controller),
+                      child: const Text("ABBANDONA", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    )
+                ],
+              ),
+              body: Column(
+                children: [
+                  if (controller.gpsDisabilitato)
+                    Container(
+                      width: double.infinity,
+                      color: Colors.red,
+                      padding: const EdgeInsets.all(8),
+                      child: const Text("GPS DISABILITATO!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    ),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.only(bottom: 100), // Spazio extra per il fondo
+                      children: [
+                        ..._costruisciListaMembriWidget(controller, visibilitaCompleta),
+                        if (debugAttivo) ...[
+                          const Divider(thickness: 3, color: Colors.deepPurple),
+                          _costruisciPannelloDebugInformazioni(controller),
+                          const Divider(),
+                          _costruisciPannelloSimulatoreFake(controller),
+                          const Divider(),
+                          _costruisciPannelloImpostazioniDebug(controller),
+                        ]
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+    );
+  }
+
+  void _confermaAbbandona(BuildContext context, GeoRefController controller) async {
+    final procedi = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Abbandona Carovana"),
+        content: const Text("Sei sicuro di voler fermare il GeoRef e uscire dalla formazione attiva?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("ANNULLA")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("FERMA TUTTO")
+          ),
+        ],
+      ),
+    );
+
+    if (procedi == true) {
+      await controller.stop();
+      if (context.mounted) {
+        // Torniamo indietro alla schermata del Gruppo (uscendo sia dalla Carovana che dalla Conversazione)
+        Navigator.of(context).pop(); // Esce dalla Carovana
+        Navigator.of(context).pop(); // Esce dalla Conversazione
+      }
+    }
+  }
+
+  Widget _costruisciPannelloImpostazioniDebug(GeoRefController controller) {
+    final dm = DebugManager();
+    
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      color: Colors.red.withValues(alpha: 0.05),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_usaGpsReale && _gpsDisabilitato)
-            Container(
-              width: double.infinity,
-              color: Colors.red,
-              padding: const EdgeInsets.all(8),
-              child: const Text("GPS DISABILITATO!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-            ),
-          Expanded(
-            child: ListView(
-              children: [
-                _costruisciListaMembriWidget(visibilitaCompleta),
-                if (debugAttivo) ...[
-                  const Divider(thickness: 3, color: Colors.deepPurple),
-                  _costruisciPannelloDebugInformazioni(),
-                  const Divider(),
-                  _costruisciPannelloSimulatoreFake(),
-                ]
-              ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("⚙️ IMPOSTAZIONI DEBUG", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+              ElevatedButton(
+                onPressed: () {
+                  dm.debugMode = false;
+                  setState(() {});
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                child: const Text("ESCI DEBUG"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text("Coordinate Iniziali Fake (Brescia default):", style: TextStyle(fontSize: 12)),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _latController,
+                  decoration: const InputDecoration(labelText: "Latitudine"),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: _lonController,
+                  decoration: const InputDecoration(labelText: "Longitudine"),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                final lat = double.tryParse(_latController.text);
+                final lon = double.tryParse(_lonController.text);
+                if (lat != null && lon != null) {
+                  dm.impostaCoordinateFake(lat, lon);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Coordinate Fake Aggiornate!"), duration: Duration(seconds: 1)),
+                  );
+                }
+              },
+              child: const Text("SALVA COORDINATE FAKE"),
             ),
           ),
         ],
@@ -328,43 +220,141 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> with Wi
     );
   }
 
-  Widget _costruisciListaMembriWidget(bool visibilitaCompleta) {
-    final listaId = visibilitaCompleta ? _ultimePosizioni.keys.toList() : [widget.mioUid];
+  Iterable<Widget> _costruisciListaMembriWidget(GeoRefController controller, bool visibilitaCompleta) {
+    final listaId = controller.snapshotRidersCompleti.keys
+        .where((id) => controller.snapshotRidersCompleti[id]?.partecipando ?? false)
+        .toList();
+    
+    if (listaId.isEmpty) return [];
+
     listaId.sort((a, b) {
-      final progA = _progressi[a]?.routeProgress ?? 0.0;
-      final progB = _progressi[b]?.routeProgress ?? 0.0;
+      final progA = controller.progressi[a]?.routeProgress ?? 0.0;
+      final progB = controller.progressi[b]?.routeProgress ?? 0.0;
       return progB.compareTo(progA);
     });
 
-    return Column(
-      children: listaId.map((id) {
-        final p = _progressi[id];
-        final msg = _messaggiNavigazione[id];
-        final avviso = _avvisiAttivi[id];
-        if (p == null) return const SizedBox.shrink();
+    // Identificazione sicura del Leader
+    String? leaderId; 
+    for (var id in listaId) {
+      if (controller.snapshotRidersCompleti[id]?.ruolo == RuoloGruppo.leader) {
+        leaderId = id;
+        break;
+      }
+    }
+    
+    // Se il leader non è ancora arrivato, usiamo il primo della lista per non crashare
+    final leaderProg = (leaderId != null) ? (controller.progressi[leaderId]?.routeProgress ?? 0.0) : 0.0;
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: p.engineState == EngineState.offRoute ? Colors.purple : Colors.green,
-              child: const Icon(Icons.person, color: Colors.white),
-            ),
-            title: Text(id.toUpperCase()),
-            subtitle: Text(tracciaValidaV3() ? (avviso?.messaggio ?? msg ?? "In marcia...") : "WAITING_SNAKE (Punti < 2)"),
-            trailing: Text("${p.routeProgress.round()}m"),
-          ),
-        );
-      }).toList(),
+    return listaId.map((id) {
+      final p = controller.progressi[id];
+      final riderInfo = controller.snapshotRidersCompleti[id];
+      if (riderInfo == null) return const SizedBox.shrink();
+
+      final msg = controller.messaggiNavigazione[id];
+      final avviso = controller.avvisiAttivi[id];
+
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: FutureBuilder<Utente?>(
+          future: _servizioDatabase.leggiUtente(id),
+          builder: (context, uSnapshot) {
+            final utente = uSnapshot.data;
+            final String nomeDisplay = utente?.nickname?.isNotEmpty == true
+                ? utente!.nickname!
+                : (utente?.nome ?? id.toUpperCase());
+
+            final ruolo = riderInfo.ruolo;
+
+            Color avatarColor;
+            if (ruolo == RuoloGruppo.leader) {
+              avatarColor = Colors.orange;
+            } else if (ruolo == RuoloGruppo.scopa) {
+              avatarColor = Colors.blue;
+            } else {
+              avatarColor = (p?.engineState.name == 'offRoute') ? Colors.purple : Colors.green;
+            }
+
+            final traccia = controller.leaderEngine.ottieniRoutePoints();
+            double distProssimoPunto = 0.0;
+            if (p != null && p.nextTargetIndex < traccia.length) {
+              final target = traccia[p.nextTargetIndex];
+              final miaPos = controller.ultimePosizioni[id];
+              if (miaPos != null) {
+                distProssimoPunto = LocationEvaluator().distanzaTraDuePunti(
+                  miaPos.latitudine, miaPos.longitudine,
+                  target.latitudine, target.longitudine
+                );
+              }
+            }
+
+            return ExpansionTile(
+              leading: CircleAvatar(
+                backgroundColor: avatarColor,
+                child: Icon(
+                  ruolo == RuoloGruppo.leader ? Icons.star : (ruolo == RuoloGruppo.scopa ? Icons.shield : Icons.person),
+                  color: Colors.white,
+                ),
+              ),
+              title: Text(nomeDisplay, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(traccia.length >= 2 
+                  ? (avviso?.messaggio ?? msg ?? "In marcia...") 
+                  : "IN ATTESA DI SNAKE"),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text("${p?.routeProgress.round() ?? 0}m", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const Text("progresso", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                ],
+              ),
+              children: [
+                if (p != null)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        _rigaDettaglio("Punto percorso (ID)", "${p.lastValidatedIndex}"),
+                        _rigaDettaglio("Prossimo obiettivo", "${p.nextTargetIndex}"),
+                        _rigaDettaglio("Distanza dal prossimo punto", "${distProssimoPunto.round()} m"),
+                        _rigaDettaglio("Distanza dal Leader", "${(leaderProg - p.routeProgress).round()} m"),
+                        if (p.engineState.name == 'offRoute')
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8.0),
+                            child: Text("⚠️ FUORI ROTTA - Snake interrotto per questo rider", 
+                              style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ),
+                  )
+                else
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text("Dati telemetrici in fase di inizializzazione...", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                  )
+              ],
+            );
+          },
+        ),
+      );
+    });
+  }
+
+  Widget _rigaDettaglio(String etichetta, String valore) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(etichetta, style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
+          Text(valore, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
-  bool tracciaValidaV3() => _leaderEngine.ottieniRoutePoints().length >= 2;
-
-  Widget _costruisciPannelloDebugInformazioni() {
-    final traccia = _leaderEngine.ottieniRoutePoints();
-    final leaderKey = _usaGpsReale ? (_servizioReal?.leaderUid ?? 'N/A') : 'leader';
-    final scopaKey = _usaGpsReale ? (_servizioReal?.scopaUid ?? 'N/A') : 'scopa';
+  Widget _costruisciPannelloDebugInformazioni(GeoRefController controller) {
+    final traccia = controller.leaderEngine.ottieniRoutePoints();
+    final debugGpsFake = DebugManager().gpsFake;
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -374,19 +364,19 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> with Wi
         children: [
           const Text("A) DEBUG INFORMAZIONI", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
           const SizedBox(height: 8),
-          Text("• GPS: ${_usaGpsReale ? 'REAL (Geolocator)' : 'FAKE (Simulatore)'}"),
+          Text("• GPS: ${!debugGpsFake ? 'REAL (Geolocator)' : 'FAKE (Simulatore)'}"),
           Text("• RoutePoints generati: ${traccia.length}"),
-          Text("• Tail Index: ${_tailState?.tailIndex ?? -1} (${_tailState?.tailUid ?? 'N/A'})"),
-          Text("• Leader UID: $leaderKey | Scopa UID: $scopaKey"),
-          Text("• LastValidated mio: ${_progressi[widget.mioUid]?.lastValidatedIndex ?? -1}"),
-          Text("• Target mio: ${_progressi[widget.mioUid]?.nextTargetIndex ?? -1}"),
-          Text("• GC Status: Snake mobile attivo (${_config.distanzaMassimaGruppo.round()}m)"),
+          Text("• Tail Index: ${controller.tailState?.tailIndex ?? -1}"),
+          Text("• Engine Attivo: ${controller.isAttivo}"),
+          Text("• Rider Selezionato: ${_nomiCache[_riderSelezionato] ?? _riderSelezionato}"),
         ],
       ),
     );
   }
 
-  Widget _costruisciPannelloSimulatoreFake() {
+  Widget _costruisciPannelloSimulatoreFake(GeoRefController controller) {
+    final isFake = DebugManager().gpsFake;
+    
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -400,22 +390,35 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> with Wi
                 children: [
                   const Text("REALE / FAKE"),
                   Switch(
-                    value: !_usaGpsReale,
-                    onChanged: (val) => _cambiaSorgenteGps(!val),
+                    value: isFake,
+                    onChanged: (val) {
+                      setState(() => DebugManager().gpsFake = val);
+                      controller.ricaricaSorgenteGps();
+                    },
                   ),
                 ],
               )
             ],
           ),
-          if (!_usaGpsReale) ...[
+          if (isFake) ...[
             const SizedBox(height: 8),
             Row(
               children: [
                 const Text("Rider: "),
                 DropdownButton<String>(
-                  value: _riderSelezionato,
-                  items: ['leader', 'scopa', 'p1', 'p2', 'p3'].map((String value) {
-                    return DropdownMenuItem<String>(value: value, child: Text(value.toUpperCase()));
+                  value: controller.tuttiIMembriGruppo.any((m) => m.idUtente == _riderSelezionato) 
+                      ? _riderSelezionato 
+                      : (controller.tuttiIMembriGruppo.isNotEmpty 
+                          ? controller.tuttiIMembriGruppo.first.idUtente 
+                          : _riderSelezionato),
+                  items: controller.tuttiIMembriGruppo.map((m) {
+                    final uid = m.idUtente;
+                    final ruoloEmoji = m.ruolo == RuoloGruppo.leader ? "👑 " : (m.ruolo == RuoloGruppo.scopa ? "🏍️ " : "");
+                    final nomeRider = _nomiCache[uid] ?? uid.substring(0, math.min(uid.length, 6));
+                    return DropdownMenuItem<String>(
+                      value: uid, 
+                      child: Text("$ruoloEmoji$nomeRider")
+                    );
                   }).toList(),
                   onChanged: (val) {
                     if (val != null) setState(() => _riderSelezionato = val);
@@ -437,31 +440,17 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> with Wi
             const SizedBox(height: 12),
             const Center(child: Text("JOYSTICK 8 DIREZIONI", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
             const SizedBox(height: 6),
-            _costruisciGrigliaJoystick(),
+            _costruisciGrigliaJoystick(controller),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _ultimePosizioni[_riderSelezionato] = PosizioneGps(
-                        latitudine: 41.8902,
-                        longitudine: 12.4922,
-                        ultimoAggiornamento: DateTime.now(),
-                      );
-                      _processaMotoreV3();
-                    });
-                  },
+                  onPressed: () => controller.forzaIngressoRider(_riderSelezionato),
                   child: const Text("ENTRA RIDER"),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _ultimePosizioni.remove(_riderSelezionato);
-                      _progressi.remove(_riderSelezionato);
-                    });
-                  },
+                  onPressed: () => controller.forzaUscitaRider(_riderSelezionato),
                   child: const Text("ESCI RIDER"),
                 ),
               ],
@@ -472,54 +461,26 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> with Wi
     );
   }
 
-  Widget _costruisciGrigliaJoystick() {
+  Widget _costruisciGrigliaJoystick(GeoRefController controller) {
     return Column(
       children: [
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [_joyButton("NW"), _joyButton("N"), _joyButton("NE")]),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [_joyButton("W"), const SizedBox(width: 50, height: 50, child: Icon(Icons.motorcycle, color: Colors.blue)), _joyButton("E")]),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [_joyButton("SW"), _joyButton("S"), _joyButton("SE")]),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [_joyButton(controller, "NW"), _joyButton(controller, "N"), _joyButton(controller, "NE")]),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [_joyButton(controller, "W"), const SizedBox(width: 50, height: 50, child: Icon(Icons.motorcycle, color: Colors.blue)), _joyButton(controller, "E")]),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [_joyButton(controller, "SW"), _joyButton(controller, "S"), _joyButton(controller, "SE")]),
       ],
     );
   }
 
-  Widget _joyButton(String dir) {
+  Widget _joyButton(GeoRefController controller, String dir) {
     return Container(
       margin: const EdgeInsets.all(4),
       width: 50,
       height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(padding: EdgeInsets.zero, backgroundColor: Colors.blue.shade100),
-        onPressed: () => _muoviRiderFake(dir),
+        onPressed: () => controller.muoviRiderFake(_riderSelezionato, dir, _metriSpostamento),
         child: Text(dir, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
       ),
     );
-  }
-
-  void _muoviRiderFake(String direzione) {
-    final posAttuale = _ultimePosizioni[_riderSelezionato] ?? PosizioneGps(
-      latitudine: 41.8902,
-      longitudine: 12.4922,
-      ultimoAggiornamento: DateTime.now(),
-    );
-
-    double dLat = 0.0;
-    double dLon = 0.0;
-    // Conversione approssimativa metri -> gradi
-    final double offsetGradi = _metriSpostamento / 111320.0;
-
-    if (direzione.contains("N")) dLat = offsetGradi;
-    if (direzione.contains("S")) dLat = -offsetGradi;
-    if (direzione.contains("E")) dLon = offsetGradi;
-    if (direzione.contains("W")) dLon = -offsetGradi;
-
-    setState(() {
-      _ultimePosizioni[_riderSelezionato] = PosizioneGps(
-        latitudine: posAttuale.latitudine + dLat,
-        longitudine: posAttuale.longitudine + dLon,
-        ultimoAggiornamento: DateTime.now(),
-        direzione: posAttuale.direzione,
-      );
-      _processaMotoreV3();
-    });
   }
 }

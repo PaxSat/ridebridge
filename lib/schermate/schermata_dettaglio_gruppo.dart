@@ -9,9 +9,10 @@ import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
+import '../servizi/georef_controller.dart';
 
 import 'schermata_dettaglio_membro.dart';
-import 'schermata_stato_carovana.dart';
+import 'schermata_conversazione.dart';
 
 /// Schermata di dettaglio del gruppo con gestione ruoli e azioni specifiche.
 class SchermataDettaglioGruppo extends StatefulWidget {
@@ -240,30 +241,53 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SchermataStatoCarovana(
-                            mioRuolo: mioRuolo.ruolo,
-                            mioUid: _uid!,
-                            idGruppo: widget.gruppo.id,
-                          ),
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('gruppi')
+                      .doc(widget.gruppo.id)
+                      .collection('partecipanti')
+                      .doc(_uid)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
+                    final dati = snapshot.data!.data() as Map<String, dynamic>;
+                    
+                    return SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          // 1. Avvia la partecipazione se non è già attiva
+                          if (!(dati['partecipando'] ?? false)) {
+                            await GeoRefController().start(
+                              idGruppo: widget.gruppo.id,
+                              mioUid: _uid!,
+                              mioRuolo: mioRuolo.ruolo,
+                            );
+                          }
+                          
+                          if (context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SchermataConversazione(
+                                  gruppo: widget.gruppo,
+                                  mioRuoloIniziale: mioRuolo.ruolo,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text("PARTECIPA"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.location_on),
-                    label: Text(l10n.viewCaravanStatus),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

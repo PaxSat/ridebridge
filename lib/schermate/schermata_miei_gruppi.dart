@@ -1,3 +1,4 @@
+import 'package:ridebridge/servizi/georef_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
@@ -18,6 +19,7 @@ class SchermataMieiGruppi extends StatefulWidget {
 
 class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
   final ServizioGruppi _servizioGruppi = ServizioGruppi();
+  final GeoRefController _geoRefController = GeoRefController();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   /// Gestisce l'ingresso nella conversazione live.
@@ -56,6 +58,13 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
             await _servizioGruppi.cancellaEventiPercorso(gruppo.id);
           }
         }
+
+        // 1. Avvia la partecipazione (Livello PARTECIPA)
+        await _geoRefController.start(
+          idGruppo: gruppo.id,
+          mioUid: uid,
+          mioRuolo: partecipante.ruolo,
+        );
 
         if (!context.mounted) return;
 

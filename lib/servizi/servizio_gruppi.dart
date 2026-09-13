@@ -172,6 +172,17 @@ class ServizioGruppi {
     }
   }
 
+  /// Stream della lista dei partecipanti per aggiornamenti real-time.
+  Stream<List<PartecipanteGruppo>> streamPartecipanti(String idGruppo) {
+    return _gruppiRef
+        .doc(idGruppo)
+        .collection('partecipanti')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
+            .toList());
+  }
+
   /// Recupera il ruolo di un utente specifico in un gruppo.
   Future<PartecipanteGruppo?> ottieniRuoloUtente(String idGruppo, String idUtente) async {
     try {

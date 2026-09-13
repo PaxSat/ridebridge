@@ -10,8 +10,14 @@ class DebugManager extends ChangeNotifier {
   bool _debugMode = false;
   bool _gpsFake = false;
 
+  // Coordinate default: Brescia
+  double _latFake = 45.5416;
+  double _lonFake = 10.2118;
+
   bool get debugMode => _debugMode;
   bool get gpsFake => _gpsFake;
+  double get latFake => _latFake;
+  double get lonFake => _lonFake;
 
   set debugMode(bool value) {
     if (_debugMode != value) {
@@ -25,5 +31,11 @@ class DebugManager extends ChangeNotifier {
       _gpsFake = value;
       notifyListeners();
     }
+  }
+
+  void impostaCoordinateFake(double lat, double lon) {
+    _latFake = lat;
+    _lonFake = lon;
+    notifyListeners();
   }
 }

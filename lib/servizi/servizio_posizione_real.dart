@@ -57,9 +57,8 @@ class ServizioPosizioneReal {
         if (part.ruolo == RuoloGruppo.leader) leaderUid = doc.id;
         if (part.ruolo == RuoloGruppo.scopa) scopaUid = doc.id;
 
-        if (part.posizioneGps != null) {
-          posizioni[doc.id] = part;
-        }
+        // Passiamo tutto al controller, il filtraggio avverrà lì per coerenza con la UI
+        posizioni[doc.id] = part;
       }
       
       debugPrint('[GEOREF] Snapshot ricevuto numPartecipanti=${posizioni.length} uids=${posizioni.keys.toList()}');

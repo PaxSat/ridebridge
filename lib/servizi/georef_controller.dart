@@ -45,9 +45,10 @@ class GeoRefController extends ChangeNotifier {
   bool _isAttivo = false;
   String? _idGruppoCorrente;
   String? _mioUid;
-  RuoloGruppo? _mioRuolo;
-
-  // Dati in tempo reale (Sola Lettura per la UI)
+  
+  // Membri per modalità Fake
+  final List<PartecipanteGruppo> _tuttiIMembriGruppo = [];
+  final Set<String> _uidsVirtualiEntrati = {};
   final Map<String, PartecipanteGruppo> _snapshotRidersCompleti = {};
   final Map<String, PosizioneGps> _ultimePosizioni = {};
   final Map<String, RouteProgress> _progressi = {};
@@ -63,8 +64,10 @@ class GeoRefController extends ChangeNotifier {
   Map<String, AvvisoCarovana?> get avvisiAttivi => _avvisiAttivi;
   TailState? get tailState => _tailState;
   bool get gpsDisabilitato => _gpsDisabilitato;
+  Map<String, PartecipanteGruppo> get snapshotRidersCompleti => _snapshotRidersCompleti;
   LeaderEngine get leaderEngine => _leaderEngine;
   Map<String, PosizioneGps> get ultimePosizioni => _ultimePosizioni;
+  List<PartecipanteGruppo> get tuttiIMembriGruppo => _tuttiIMembriGruppo;
 
   /// Avvia il sistema GeoRef (Bootstrap Reale).
   Future<void> start({
@@ -76,7 +79,6 @@ class GeoRefController extends ChangeNotifier {
 
     _idGruppoCorrente = idGruppo;
     _mioUid = mioUid;
-    _mioRuolo = mioRuolo;
     _isAttivo = true;
 
     // 1. Imposta partecipazione attiva su Firestore
@@ -111,6 +113,8 @@ class GeoRefController extends ChangeNotifier {
     _messaggiNavigazione.clear();
     _avvisiAttivi.clear();
     _tailState = null;
+    _tuttiIMembriGruppo.clear();
+    _uidsVirtualiEntrati.clear();
 
     notifyListeners();
   }
@@ -137,18 +141,43 @@ class GeoRefController extends ChangeNotifier {
         notifyListeners();
       });
     } else {
-      _subscription = _fakeGps.streamPosizioni.listen((posizioni) {
-        final Map<String, PartecipanteGruppo> mockMappa = {};
-        posizioni.forEach((uid, gps) {
-          mockMappa[uid] = PartecipanteGruppo(
-            idUtente: uid,
-            ruolo: uid == 'leader' ? RuoloGruppo.leader : (uid == 'scopa' ? RuoloGruppo.scopa : RuoloGruppo.partecipante),
-            partecipando: true,
-            posizioneGps: gps,
-          );
+      _fakeGps.impostaPuntoPartenza(DebugManager().latFake, DebugManager().lonFake);
+      
+      if (_idGruppoCorrente != null) {
+        // 1. Stream per avere sempre la lista aggiornata di chi FA PARTE del gruppo
+        _subscription = _servizioGruppi.streamPartecipanti(_idGruppoCorrente!).listen((membri) {
+          _tuttiIMembriGruppo.clear();
+          _tuttiIMembriGruppo.addAll(membri);
+          _fakeGps.aggiornaMembriSimulazione(membri);
+          
+          // Forza noi stessi tra quelli entrati virtualmente all'inizio se vogliamo vederci subito
+          if (_uidsVirtualiEntrati.isEmpty && _mioUid != null) {
+            _uidsVirtualiEntrati.add(_mioUid!);
+          }
+          
+          notifyListeners();
         });
-        _aggiornaDatiEProcessa(mockMappa);
-      });
+
+        // 2. Ascoltiamo il simulatore ma filtriamo solo chi è "Entrato" tramite debug
+        _localGpsSubscription = _fakeGps.streamPosizioni.listen((posizioni) {
+          final Map<String, PartecipanteGruppo> mockMappa = {};
+          
+          for (var riderOriginale in _tuttiIMembriGruppo) {
+            final uid = riderOriginale.idUtente;
+            if (_uidsVirtualiEntrati.contains(uid)) {
+              final gps = posizioni[uid];
+              if (gps != null) {
+                mockMappa[uid] = riderOriginale.copiaCon(
+                  partecipando: true,
+                  online: true,
+                  posizioneGps: gps,
+                );
+              }
+            }
+          }
+          _aggiornaDatiEProcessa(mockMappa);
+        });
+      }
       _fakeGps.avviaSimulazione();
     }
   }
@@ -173,26 +202,42 @@ class GeoRefController extends ChangeNotifier {
     final scopaKey = !DebugManager().gpsFake ? (_servizioReal?.scopaUid ?? '') : 'scopa';
 
     final leaderPos = _ultimePosizioni[leaderKey];
-    if (leaderPos == null) return;
-
     final partecipantiAttivi = _snapshotRidersCompleti.values.where((p) => p.partecipando).toList();
-    _leaderEngine.processaPosizioneLeader(leaderPos, partecipantiAttivi.length);
+
+    // 1. Processo Leader (solo se ha posizione)
+    if (leaderPos != null) {
+      _leaderEngine.processaPosizioneLeader(leaderPos, partecipantiAttivi.length);
+    }
 
     final traccia = _leaderEngine.ottieniRoutePoints();
     final leaderSeqId = _leaderEngine.ultimoRoutePoint()?.sequenceId ?? 0;
     final bool snakeValido = traccia.length >= 2;
 
-    // 2. Inseguimento Snake
-    _snapshotRidersCompleti.forEach((uid, rider) {
-      if (rider.partecipando && rider.posizioneGps != null) {
+    // 2. Inseguimento Snake e Inizializzazione Progressi
+    for (var rider in partecipantiAttivi) {
+      final uid = rider.idUtente;
+      if (rider.posizioneGps != null && snakeValido) {
         _progressi[uid] = _followerEngine.aggiornaPosizionePartecipante(
           uid: uid,
           pos: rider.posizioneGps!,
           traccia: traccia,
           leaderSequenceId: leaderSeqId,
         );
+      } else {
+        // Se non ha posizione o snake non ancora pronto, creiamo un progresso placeholder per visibilità
+        _progressi[uid] = _progressi[uid] ?? RouteProgress(
+          uid: uid,
+          lastValidatedIndex: -1,
+          nextTargetIndex: 0,
+          ultimoAggiornamento: DateTime.now(),
+          ultimaPosizioneGps: rider.posizioneGps ?? PosizioneGps(
+            latitudine: 0, 
+            longitudine: 0, 
+            ultimoAggiornamento: DateTime.now()
+          ),
+        );
       }
-    });
+    }
 
     // 3. Calcolo TailState
     _tailState = _snakeManager.calcolaTailState();
@@ -257,10 +302,70 @@ class GeoRefController extends ChangeNotifier {
     });
   }
 
+  /// Sposta un rider in modalità FAKE (chiamato dal simulatore UI).
+  void muoviRiderFake(String riderId, String direzione, double metri) {
+    if (!DebugManager().gpsFake) return;
+
+    final posAttuale = _ultimePosizioni[riderId] ?? PosizioneGps(
+      latitudine: DebugManager().latFake,
+      longitudine: DebugManager().lonFake,
+      ultimoAggiornamento: DateTime.now(),
+    );
+
+    double dLat = 0.0;
+    double dLon = 0.0;
+    final double offsetGradi = metri / 111320.0;
+
+    if (direzione.contains("N")) dLat = offsetGradi;
+    if (direzione.contains("S")) dLat = -offsetGradi;
+    if (direzione.contains("E")) dLon = offsetGradi;
+    if (direzione.contains("W")) dLon = -offsetGradi;
+
+    final nuovaPos = PosizioneGps(
+      latitudine: posAttuale.latitudine + dLat,
+      longitudine: posAttuale.longitudine + dLon,
+      ultimoAggiornamento: DateTime.now(),
+      direzione: posAttuale.direzione,
+    );
+
+    // 1. Notifica il simulatore fake della nuova posizione manuale
+    _fakeGps.aggiornaPosizioneManuale(riderId, nuovaPos);
+
+    // 2. Iniettiamo la posizione direttamente per reattività immediata
+    _ultimePosizioni[riderId] = nuovaPos;
+    
+    // Aggiorniamo lo snap dei rider per coerenza mantenendo il ruolo reale
+    final riderEsistente = _snapshotRidersCompleti[riderId];
+    _snapshotRidersCompleti[riderId] = (riderEsistente ?? PartecipanteGruppo(
+      idUtente: riderId,
+      ruolo: RuoloGruppo.partecipante,
+    )).copiaCon(
+      partecipando: true,
+      posizioneGps: nuovaPos,
+    );
+
+    _processaMotoreV3();
+    notifyListeners();
+  }
+
   /// Forza un aggiornamento della sorgente (chiamato dal DebugManager)
   void ricaricaSorgenteGps() {
     if (_isAttivo) {
       _cambiaSorgenteGps(!DebugManager().gpsFake);
     }
+  }
+
+  void forzaIngressoRider(String riderId) {
+    _uidsVirtualiEntrati.add(riderId);
+    muoviRiderFake(riderId, "N", 0); // Posizione base
+  }
+
+  void forzaUscitaRider(String riderId) {
+    _uidsVirtualiEntrati.remove(riderId);
+    _ultimePosizioni.remove(riderId);
+    _snapshotRidersCompleti.remove(riderId);
+    _progressi.remove(riderId);
+    _processaMotoreV3();
+    notifyListeners();
   }
 }
