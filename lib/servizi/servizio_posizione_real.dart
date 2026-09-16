@@ -5,12 +5,15 @@ import 'package:geolocator/geolocator.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/partecipante_gruppo.dart';
 import 'servizio_gruppi.dart';
+import 'firestore_mapper.dart';
+import 'firebase_georef_transport.dart';
 
 /// Servizio reale per la gestione delle posizioni GPS (GeoRef V3).
 class ServizioPosizioneReal {
   final String idGruppo;
   final String mioUid;
-  final _servizioGruppi = ServizioGruppi();
+
+  final _transport = FirebaseGeorefTransport();
   
   String? leaderUid;
   String? scopaUid;
@@ -51,7 +54,10 @@ class ServizioPosizioneReal {
 
       for (var doc in snapshot.docs) {
         final dati = doc.data();
-        final part = PartecipanteGruppo.daMappa(dati, doc.id);
+        final part = PartecipanteGruppo.daMappa(FirestoreMapper.timestampToDateTime(dati), doc.id);
+        
+        // Nota: GPS e lastValidatedIndex non sono più in PartecipanteGruppo.
+        // Questo servizio andrebbe migrato a GeorefTransport.
         
         // Identificazione dinamica dei ruoli
         if (part.ruolo == RuoloGruppo.leader) leaderUid = doc.id;
@@ -87,9 +93,9 @@ class ServizioPosizioneReal {
   /// Metodo predisposto per l'aggiornamento della propria posizione reale.
   /// Dovrebbe essere chiamato da un listener di Geolocator.
   Future<void> aggiornaMiaPosizione(PosizioneGps pos) async {
-    debugPrint('[GEOREF] Firestore write uid=$mioUid lat=${pos.latitudine} lon=${pos.longitudine}');
-    await _servizioGruppi.aggiornaPosizione(idGruppo, mioUid, pos);
-    debugPrint('[GEOREF] Firestore write OK');
+    debugPrint('[GEOREF] Transport write uid=$mioUid lat=${pos.latitudine} lon=${pos.longitudine}');
+    await _transport.pubblicaPosizione(idGruppo, mioUid, pos);
+    debugPrint('[GEOREF] Transport write OK');
   }
 
   void ferma() {

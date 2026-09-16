@@ -16,9 +16,15 @@ class RouteTrackManager {
   Duration sogliaTempo;
 
   RouteTrackManager({
-    this.sogliaDistanzaMeters = 25.0,
-    this.sogliaTempo = const Duration(seconds: 4),
+    this.sogliaDistanzaMeters = 50.0,
+    this.sogliaTempo = const Duration(seconds: 15),
   });
+
+  /// Aggiorna le soglie operative dalla configurazione del gruppo.
+  void aggiornaSoglie(double distanza, double secondi) {
+    sogliaDistanzaMeters = distanza;
+    sogliaTempo = Duration(seconds: secondi.round());
+  }
 
   /// Pulisce l'intera traccia corrente.
   void reset() {
@@ -36,7 +42,8 @@ class RouteTrackManager {
   /// Analizza una nuova posizione del leader e decide se generare un nuovo RoutePoint.
   /// Ritorna il nuovo [RoutePoint] se creato, altrimenti null.
   /// Logica V2: distanza >= 25m AND tempo >= 4s.
-  RoutePoint? aggiungiPosizioneLeader(PosizioneGps pos) {
+  /// [ignoreTimeThreshold] permette di saltare il controllo temporale (es. per simulatore Fake).
+  RoutePoint? aggiungiPosizioneLeader(PosizioneGps pos, {bool ignoreTimeThreshold = false}) {
     if (_track.isEmpty) {
       final primoPunto = RoutePoint(
         id: _uuid.v4(),
@@ -63,8 +70,12 @@ class RouteTrackManager {
     // Calcolo tempo trascorso dall'ultimo punto
     final tempoTrascorso = pos.ultimoAggiornamento.difference(ultimo.timestamp);
 
-    // Verifichiamo se ENTRAMBE le soglie sono state superate (CONDIZIONE AND)
-    if (distanza >= sogliaDistanzaMeters && tempoTrascorso >= sogliaTempo) {
+    // Verifichiamo se le soglie sono state superate.
+    // In modalità ignoreTimeThreshold (Fake), abbassiamo leggermente la soglia di distanza (24m)
+    // per compensare arrotondamenti nei calcoli GPS del simulatore.
+    final sogliaDistanzaEffettiva = ignoreTimeThreshold ? 24.0 : sogliaDistanzaMeters;
+
+    if (distanza >= sogliaDistanzaEffettiva && (tempoTrascorso >= sogliaTempo || ignoreTimeThreshold)) {
       // Calcolo bearing reale del segmento (P-1 -> P)
       final bearingSegmento = _evaluator.calcolaBearing(
         ultimo.latitudine, ultimo.longitudine,

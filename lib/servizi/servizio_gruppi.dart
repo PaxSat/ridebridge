@@ -4,10 +4,11 @@ import 'package:flutter/foundation.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/stato_audio.dart';
-import '../modelli/posizione_gps.dart';
+
 
 import '../modelli/configurazione_gruppo.dart';
 import '../modelli/snake_state.dart';
+import 'firestore_mapper.dart';
 
 /// Gestisce le operazioni relative ai gruppi su Cloud Firestore.
 class ServizioGruppi {
@@ -58,7 +59,7 @@ class ServizioGruppi {
       await docGruppo
           .collection('partecipanti')
           .doc(idCreatore)
-          .set(partecipanteLeader.aMappa());
+          .set(FirestoreMapper.dateTimeToTimestamp(partecipanteLeader.aMappa()));
 
       return codice;
     } catch (e) {
@@ -111,7 +112,7 @@ class ServizioGruppi {
           .doc(doc.id)
           .collection('partecipanti')
           .doc(idUtente)
-          .set(nuovoPartecipante.aMappa());
+          .set(FirestoreMapper.dateTimeToTimestamp(nuovoPartecipante.aMappa()));
     } catch (e) {
       debugPrint('Errore durante l\'ingresso nel gruppo: $e');
       rethrow;
@@ -127,7 +128,7 @@ class ServizioGruppi {
           .get();
 
       return query.docs
-          .map((doc) => Gruppo.daMappa(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => Gruppo.daMappa(FirestoreMapper.timestampToDateTime(doc.data() as Map<String, dynamic>), doc.id))
           .toList();
     } catch (e) {
       debugPrint('Errore durante il recupero dei gruppi: $e');
@@ -165,7 +166,7 @@ class ServizioGruppi {
     try {
       final snapshot = await _gruppiRef.doc(idGruppo).collection('partecipanti').get();
       return snapshot.docs
-          .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
+          .map((doc) => PartecipanteGruppo.daMappa(FirestoreMapper.timestampToDateTime(doc.data()), doc.id))
           .toList();
     } catch (e) {
       debugPrint('Errore durante il recupero dei partecipanti: $e');
@@ -180,7 +181,7 @@ class ServizioGruppi {
         .collection('partecipanti')
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
+            .map((doc) => PartecipanteGruppo.daMappa(FirestoreMapper.timestampToDateTime(doc.data()), doc.id))
             .toList());
   }
 
@@ -194,7 +195,7 @@ class ServizioGruppi {
           .get();
       
       if (!doc.exists) return null;
-      return PartecipanteGruppo.daMappa(doc.data()!, idUtente);
+      return PartecipanteGruppo.daMappa(FirestoreMapper.timestampToDateTime(doc.data()!), idUtente);
     } catch (e) {
       debugPrint('Errore recupero ruolo utente: $e');
       return null;
@@ -419,7 +420,7 @@ class ServizioGruppi {
           .collection('partecipanti')
           .doc(idUtente)
           .update({
-            'statoAudio': stato.aMappa(),
+            'statoAudio': FirestoreMapper.dateTimeToTimestamp(stato.aMappa()),
           });
     } catch (e) {
       debugPrint('Errore aggiornamento stato audio: $e');
@@ -458,26 +459,11 @@ class ServizioGruppi {
     }
   }
 
-  /// Aggiorna la posizione GPS in tempo reale.
-  Future<void> aggiornaPosizione(String idGruppo, String idUtente, PosizioneGps posizione) async {
-    try {
-      await _gruppiRef
-          .doc(idGruppo)
-          .collection('partecipanti')
-          .doc(idUtente)
-          .update({
-            'posizioneGps': posizione.aMappa(),
-          });
-    } catch (e) {
-      debugPrint('Errore aggiornamento posizione GPS: $e');
-    }
-  }
-
   /// Salva la configurazione tecnica del gruppo.
   Future<void> salvaConfigurazione(String idGruppo, ConfigurazioneGruppo config) async {
     try {
       await _gruppiRef.doc(idGruppo).update({
-        'configurazione': config.aMappa(),
+        'configurazione': FirestoreMapper.dateTimeToTimestamp(config.aMappa()),
       });
     } catch (e) {
       debugPrint('Errore salvataggio configurazione: $e');
@@ -552,7 +538,7 @@ class ServizioGruppi {
           .doc(idGruppo)
           .collection('stato_snake')
           .doc('attuale')
-          .set(stato.aMappa());
+          .set(FirestoreMapper.dateTimeToTimestamp(stato.aMappa()));
     } catch (e) {
       debugPrint('Errore aggiornamento SnakeState: $e');
     }
@@ -568,7 +554,7 @@ class ServizioGruppi {
           .get();
       
       if (!doc.exists || doc.data() == null) return null;
-      return SnakeState.daMappa(doc.data()!);
+      return SnakeState.daMappa(FirestoreMapper.timestampToDateTime(doc.data()!));
     } catch (e) {
       debugPrint('Errore recupero SnakeState: $e');
       return null;
@@ -584,7 +570,7 @@ class ServizioGruppi {
         .snapshots()
         .map((doc) {
       if (!doc.exists || doc.data() == null) return null;
-      return SnakeState.daMappa(doc.data()!);
+      return SnakeState.daMappa(FirestoreMapper.timestampToDateTime(doc.data()!));
     });
   }
 

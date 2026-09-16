@@ -179,6 +179,35 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
             ],
           ),
           const SizedBox(height: 16),
+          // --- NUOVO: CONTROLLO GHOST SNAKE ---
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("👻 GHOST SNAKE", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                    Text("Genera traccia anche se sei solo", style: TextStyle(fontSize: 10)),
+                  ],
+                ),
+                Switch(
+                  value: dm.ghostSnake,
+                  activeColor: Colors.orange,
+                  onChanged: (val) {
+                    controller.impostaGhostSnake(val);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           const Text("Coordinate Iniziali Fake (Brescia default):", style: TextStyle(fontSize: 12)),
           Row(
             children: [

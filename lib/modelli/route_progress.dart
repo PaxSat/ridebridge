@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'posizione_gps.dart';
 import 'engine_state.dart';
 
@@ -49,7 +48,7 @@ class RouteProgress {
         orElse: () => EngineState.normal,
       ),
       consecutiveMisses: mappa['consecutiveMisses'] ?? 0,
-      ultimoAggiornamento: (mappa['ultimoAggiornamento'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      ultimoAggiornamento: mappa['ultimoAggiornamento'] as DateTime? ?? DateTime.now(),
       ultimaPosizioneGps: PosizioneGps.daMappa(mappa['ultimaPosizioneGps'] as Map<String, dynamic>),
     );
   }
@@ -65,7 +64,7 @@ class RouteProgress {
       'routeProgress': routeProgress,
       'engineState': engineState.name,
       'consecutiveMisses': consecutiveMisses,
-      'ultimoAggiornamento': Timestamp.fromDate(ultimoAggiornamento),
+      'ultimoAggiornamento': ultimoAggiornamento,
       'ultimaPosizioneGps': ultimaPosizioneGps.aMappa(),
     };
   }

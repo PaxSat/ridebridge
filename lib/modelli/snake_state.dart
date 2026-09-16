@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'route_point.dart';
 
   /// Rappresenta lo stato operativo attuale dello Snake per la carovana.
@@ -28,7 +27,7 @@ class SnakeState {
 
     return SnakeState(
       version: mappa['version'] ?? 0,
-      timestamp: (mappa['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      timestamp: mappa['timestamp'] as DateTime? ?? DateTime.now(),
       punti: puntiRecuperati,
       leaderSequenceId: mappa['leaderSequenceId'] ?? 0,
     );
@@ -38,7 +37,7 @@ class SnakeState {
   Map<String, dynamic> aMappa() {
     return {
       'version': version,
-      'timestamp': Timestamp.fromDate(timestamp),
+      'timestamp': timestamp,
       'punti': punti.map((p) {
         final mappaPunto = p.aMappa();
         mappaPunto['id'] = p.id;

@@ -9,6 +9,7 @@ class DebugManager extends ChangeNotifier {
 
   bool _debugMode = false;
   bool _gpsFake = false;
+  bool _ghostSnake = false;
 
   // Coordinate default: Brescia
   double _latFake = 45.5416;
@@ -16,6 +17,7 @@ class DebugManager extends ChangeNotifier {
 
   bool get debugMode => _debugMode;
   bool get gpsFake => _gpsFake;
+  bool get ghostSnake => _ghostSnake;
   double get latFake => _latFake;
   double get lonFake => _lonFake;
 
@@ -29,6 +31,13 @@ class DebugManager extends ChangeNotifier {
   set gpsFake(bool value) {
     if (_gpsFake != value) {
       _gpsFake = value;
+      notifyListeners();
+    }
+  }
+
+  set ghostSnake(bool value) {
+    if (_ghostSnake != value) {
+      _ghostSnake = value;
       notifyListeners();
     }
   }

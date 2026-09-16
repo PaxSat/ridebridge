@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 /// Definisce gli stati del ciclo di vita di un punto della traccia per la carovana.
 enum RoutePointLifecycle {
@@ -31,7 +31,7 @@ class RoutePointStatus {
   factory RoutePointStatus.daMappa(Map<String, dynamic> mappa) {
     final passaggiMappa = mappa['passaggiUtenti'] as Map<String, dynamic>? ?? {};
     final passaggiConvertiti = passaggiMappa.map(
-      (key, value) => MapEntry(key, (value as Timestamp).toDate()),
+      (key, value) => MapEntry(key, value as DateTime),
     );
 
     return RoutePointStatus(
@@ -48,7 +48,7 @@ class RoutePointStatus {
   /// Converte l'oggetto [RoutePointStatus] in una mappa.
   Map<String, dynamic> aMappa() {
     final passaggiFirestore = passaggiUtenti.map(
-      (key, value) => MapEntry(key, Timestamp.fromDate(value)),
+      (key, value) => MapEntry(key, value),
     );
 
     return {

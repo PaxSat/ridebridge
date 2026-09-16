@@ -1,18 +1,22 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'schermate/schermata_login.dart';
+import 'schermate/schermata_splash.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
+import 'servizi/georef_controller.dart';
+import 'servizi/firebase_georef_transport.dart';
 
 /// Punto di ingresso dell'applicazione.
-/// Tutto parte da qui.
 void main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  GeoRefController().initialize(
+    FirebaseGeorefTransport(),
   );
 
   runApp(
@@ -46,7 +50,7 @@ class RideBridgeApp extends StatelessWidget {
       supportedLocales: AppLocalizations.supportedLocales,
 
       // Prima schermata mostrata all'avvio
-      home: const SchermataLogin(),
+      home: const SchermataSplash(),
     );
   }
 }

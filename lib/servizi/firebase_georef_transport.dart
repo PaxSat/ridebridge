@@ -3,9 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import '../modelli/snake_state.dart';
 import '../modelli/posizione_gps.dart';
-import '../modelli/partecipante_gruppo.dart';
+import '../modelli/rider_stream_data.dart';
 import 'georef_transport.dart';
 import 'servizio_gruppi.dart';
+import 'firestore_mapper.dart';
 
 /// Implementazione Firebase del Transport Layer per GeoRef.
 /// Incapsula ServizioGruppi e le interazioni dirette con Firestore.
@@ -67,21 +68,34 @@ class FirebaseGeorefTransport implements GeorefTransport {
   }
 
   @override
-  Future<void> pubblicaPosizione(String idGruppo, String idUtente, PosizioneGps posizione) {
-    return _servizioGruppi.aggiornaPosizione(idGruppo, idUtente, posizione);
+  Future<void> pubblicaPosizione(String idGruppo, String idUtente, PosizioneGps posizione, {int? lastValidatedIndex}) async {
+    final streamData = RiderStreamData(
+      uid: idUtente,
+      posizioneGps: posizione,
+      lastValidatedIndex: lastValidatedIndex,
+      timestamp: DateTime.now(),
+    );
+
+    // Scrittura su una collezione dedicata allo streaming (Isolamento dai dati gruppo)
+    await _firestore
+        .collection('tour_live_streams')
+        .doc(idGruppo)
+        .collection('riders')
+        .doc(idUtente)
+        .set(FirestoreMapper.dateTimeToTimestamp(streamData.aMappa()));
   }
 
   @override
-  Stream<Map<String, PartecipanteGruppo>> streamPosizioni(String idGruppo) {
+  Stream<Map<String, RiderStreamData>> streamPosizioni(String idGruppo) {
     return _firestore
-        .collection('gruppi')
+        .collection('tour_live_streams')
         .doc(idGruppo)
-        .collection('partecipanti')
+        .collection('riders')
         .snapshots()
         .map((snapshot) {
-      final Map<String, PartecipanteGruppo> posizioni = {};
+      final Map<String, RiderStreamData> posizioni = {};
       for (var doc in snapshot.docs) {
-        posizioni[doc.id] = PartecipanteGruppo.daMappa(doc.data(), doc.id);
+        posizioni[doc.id] = RiderStreamData.daMappa(FirestoreMapper.timestampToDateTime(doc.data()), doc.id);
       }
       return posizioni;
     });

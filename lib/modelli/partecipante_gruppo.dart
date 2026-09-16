@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'stato_audio.dart';
-import 'posizione_gps.dart';
+
 
 /// Enum che definisce i ruoli possibili all'interno di un gruppo.
 enum RuoloGruppo {
@@ -21,7 +21,6 @@ class PartecipanteGruppo {
   final bool partecipando;
   final DateTime? ultimoAccesso;
   final StatoAudio? statoAudio;
-  final PosizioneGps? posizioneGps;
 
   PartecipanteGruppo({
     required this.idUtente,
@@ -33,7 +32,6 @@ class PartecipanteGruppo {
     this.partecipando = false,
     this.ultimoAccesso,
     this.statoAudio,
-    this.posizioneGps,
   });
 
   /// Crea un oggetto [PartecipanteGruppo] da una mappa Firestore.
@@ -49,12 +47,9 @@ class PartecipanteGruppo {
       emergenzaAbilitata: mappa['emergenzaAbilitata'] ?? true,
       online: mappa['online'] ?? false,
       partecipando: mappa['partecipando'] ?? false,
-      ultimoAccesso: (mappa['ultimoAccesso'] as Timestamp?)?.toDate(),
+      ultimoAccesso: mappa['ultimoAccesso'] as DateTime?,
       statoAudio: mappa['statoAudio'] != null 
           ? StatoAudio.daMappa(mappa['statoAudio'] as Map<String, dynamic>) 
-          : null,
-      posizioneGps: mappa['posizioneGps'] != null
-          ? PosizioneGps.daMappa(mappa['posizioneGps'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -68,9 +63,8 @@ class PartecipanteGruppo {
       'emergenzaAbilitata': emergenzaAbilitata,
       'online': online,
       'partecipando': partecipando,
-      'ultimoAccesso': ultimoAccesso != null ? Timestamp.fromDate(ultimoAccesso!) : null,
+      'ultimoAccesso': ultimoAccesso,
       'statoAudio': statoAudio?.aMappa(),
-      'posizioneGps': posizioneGps?.aMappa(),
     };
   }
 
@@ -84,7 +78,6 @@ class PartecipanteGruppo {
     bool? partecipando,
     DateTime? ultimoAccesso,
     StatoAudio? statoAudio,
-    PosizioneGps? posizioneGps,
   }) {
     return PartecipanteGruppo(
       idUtente: idUtente,
@@ -96,7 +89,6 @@ class PartecipanteGruppo {
       partecipando: partecipando ?? this.partecipando,
       ultimoAccesso: ultimoAccesso ?? this.ultimoAccesso,
       statoAudio: statoAudio ?? this.statoAudio,
-      posizioneGps: posizioneGps ?? this.posizioneGps,
     );
   }
 }

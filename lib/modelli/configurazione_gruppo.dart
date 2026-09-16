@@ -5,6 +5,8 @@ class ConfigurazioneGruppo {
   final double distanzaMassimaGruppo; // Soglia per stato carovana non compatta
   final double distanzaMassimaScopa; // Soglia per perdita della scopa
   final double offRouteThreshold; // Distanza massima dalla polyline prima di OFF_ROUTE
+  final double snakeDistanceMeters; // Distanza minima tra punti Snake
+  final double snakeTimeSeconds; // Tempo minimo tra punti Snake
 
   ConfigurazioneGruppo({
     this.turnThresholdAngle = 35.0,
@@ -12,6 +14,8 @@ class ConfigurazioneGruppo {
     this.distanzaMassimaGruppo = 1500.0,
     this.distanzaMassimaScopa = 2000.0,
     this.offRouteThreshold = 150.0,
+    this.snakeDistanceMeters = 50.0,
+    this.snakeTimeSeconds = 15.0,
   });
 
   /// Preset per carovana turistica (Bilanciato).
@@ -47,6 +51,8 @@ class ConfigurazioneGruppo {
       distanzaMassimaGruppo: (mappa['distanzaMassimaGruppo'] as num?)?.toDouble() ?? 1500.0,
       distanzaMassimaScopa: (mappa['distanzaMassimaScopa'] as num?)?.toDouble() ?? 2000.0,
       offRouteThreshold: (mappa['offRouteThreshold'] as num?)?.toDouble() ?? 150.0,
+      snakeDistanceMeters: (mappa['snakeDistanceMeters'] as num?)?.toDouble() ?? 50.0,
+      snakeTimeSeconds: (mappa['snakeTimeSeconds'] as num?)?.toDouble() ?? 15.0,
     );
   }
 
@@ -58,6 +64,8 @@ class ConfigurazioneGruppo {
       'distanzaMassimaGruppo': distanzaMassimaGruppo,
       'distanzaMassimaScopa': distanzaMassimaScopa,
       'offRouteThreshold': offRouteThreshold,
+      'snakeDistanceMeters': snakeDistanceMeters,
+      'snakeTimeSeconds': snakeTimeSeconds,
     };
   }
 
@@ -68,6 +76,8 @@ class ConfigurazioneGruppo {
     double? distanzaMassimaGruppo,
     double? distanzaMassimaScopa,
     double? offRouteThreshold,
+    double? snakeDistanceMeters,
+    double? snakeTimeSeconds,
   }) {
     return ConfigurazioneGruppo(
       turnThresholdAngle: turnThresholdAngle ?? this.turnThresholdAngle,
@@ -75,6 +85,8 @@ class ConfigurazioneGruppo {
       distanzaMassimaGruppo: distanzaMassimaGruppo ?? this.distanzaMassimaGruppo,
       distanzaMassimaScopa: distanzaMassimaScopa ?? this.distanzaMassimaScopa,
       offRouteThreshold: offRouteThreshold ?? this.offRouteThreshold,
+      snakeDistanceMeters: snakeDistanceMeters ?? this.snakeDistanceMeters,
+      snakeTimeSeconds: snakeTimeSeconds ?? this.snakeTimeSeconds,
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 /// Rappresenta l'utente nel sistema RideBridge.
 class Utente {
@@ -31,8 +31,8 @@ class Utente {
       nome: mappa['nome'] ?? '',
       email: mappa['email'] ?? '',
       fotoUrl: mappa['fotoUrl'],
-      dataRegistrazione: (mappa['dataRegistrazione'] as Timestamp?)?.toDate(),
-      ultimoAccesso: (mappa['ultimoAccesso'] as Timestamp?)?.toDate(),
+      dataRegistrazione: mappa['dataRegistrazione'] as DateTime?,
+      ultimoAccesso: mappa['ultimoAccesso'] as DateTime?,
       attivo: mappa['attivo'] ?? false,
       nickname: mappa['nickname'],
       moto: mappa['moto'],
@@ -45,12 +45,8 @@ class Utente {
       'nome': nome,
       'email': email,
       'fotoUrl': fotoUrl,
-      'dataRegistrazione': dataRegistrazione != null 
-          ? Timestamp.fromDate(dataRegistrazione!) 
-          : FieldValue.serverTimestamp(),
-      'ultimoAccesso': ultimoAccesso != null 
-          ? Timestamp.fromDate(ultimoAccesso!) 
-          : FieldValue.serverTimestamp(),
+      'dataRegistrazione': dataRegistrazione,
+      'ultimoAccesso': ultimoAccesso,
       'attivo': attivo,
       'nickname': nickname,
       'moto': moto,

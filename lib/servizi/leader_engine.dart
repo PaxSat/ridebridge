@@ -11,13 +11,12 @@ class LeaderEngine {
 
   LeaderEngine(this._trackManager);
 
-  /// Riceve ed elabora la nuova posizione fisica o simulata del Leader.
-  /// Se Ghost è disattivato, blocca la generazione se non ci sono altri partecipanti attivi.
-  RoutePoint? processaPosizioneLeader(PosizioneGps pos, int numeroPartecipantiAttivi) {
+  /// [ignoreTimeThreshold] permette di saltare il controllo temporale (es. per simulatore Fake).
+  RoutePoint? processaPosizioneLeader(PosizioneGps pos, int numeroPartecipantiAttivi, {bool ignoreTimeThreshold = false}) {
     if (!ghostSnake && numeroPartecipantiAttivi <= 1) {
       return null;
     }
-    return _trackManager.aggiungiPosizioneLeader(pos);
+    return _trackManager.aggiungiPosizioneLeader(pos, ignoreTimeThreshold: ignoreTimeThreshold);
   }
 
   /// Esegue i cicli di Garbage Collection (GC) in base allo stato del GhostSnake.

@@ -6,6 +6,7 @@ import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/georef_controller.dart';
+import '../servizi/debug_manager.dart';
 import 'schermata_stato_carovana.dart';
 
 /// Schermata principale dell'interfono live (Livello GRUPPO).
@@ -173,6 +174,19 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               etichetta: l10n.leader,
               colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
               onTap: _gestisciCanaleSpeciale,
+            ),
+
+          if (widget.mioRuoloIniziale == RuoloGruppo.leader)
+            ListenableBuilder(
+              listenable: _geoRefController,
+              builder: (context, _) => _bottoneCircolare(
+                icona: Icons.visibility_off,
+                etichetta: "GHOST",
+                colore: DebugManager().ghostSnake ? Colors.deepPurple : Colors.white24,
+                onTap: () {
+                  _geoRefController.impostaGhostSnake(!DebugManager().ghostSnake);
+                },
+              ),
             ),
 
           _bottoneCircolare(

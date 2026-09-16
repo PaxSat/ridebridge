@@ -28,4 +28,31 @@ class LocationEvaluator {
     final bearing = math.atan2(y, x) * 180.0 / math.pi;
     return (bearing + 360.0) % 360.0;
   }
+
+  /// Calcola la distanza minima tra un punto P e un segmento definito dai punti A e B.
+  /// Ritorna la distanza in metri.
+  double distanzaPuntoSegmento(
+    double pLat, double pLon,
+    double aLat, double aLon,
+    double bLat, double bLon,
+  ) {
+    // 1. Calcoliamo la lunghezza del segmento (approssimazione piana locale per il fattore di proiezione)
+    final dx = bLon - aLon;
+    final dy = bLat - aLat;
+    final l2 = dx * dx + dy * dy;
+
+    if (l2 == 0) return distanzaTraDuePunti(pLat, pLon, aLat, aLon);
+
+    // 2. Calcoliamo il fattore di proiezione t (clamped tra 0 e 1)
+    // t = [(P-A) . (B-A)] / |B-A|^2
+    var t = ((pLon - aLon) * dx + (pLat - aLat) * dy) / l2;
+    t = math.max(0, math.min(1, t));
+
+    // 3. Il punto più vicino C sul segmento è A + t*(B-A)
+    final cLat = aLat + t * dy;
+    final cLon = aLon + t * dx;
+
+    // 4. Restituiamo la distanza reale (Haversine) tra P e il punto proiettato C
+    return distanzaTraDuePunti(pLat, pLon, cLat, cLon);
+  }
 }

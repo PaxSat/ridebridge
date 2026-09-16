@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'configurazione_gruppo.dart';
 
 /// Modello che rappresenta un gruppo di motociclisti.
@@ -28,7 +27,7 @@ class Gruppo {
       nome: mappa['nome'] ?? '',
       codiceAccesso: mappa['codiceAccesso'] ?? '',
       idCreatore: mappa['idCreatore'] ?? '',
-      dataCreazione: (mappa['dataCreazione'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dataCreazione: mappa['dataCreazione'] as DateTime? ?? DateTime.now(),
       attivo: mappa['attivo'] ?? true,
       configurazione: mappa['configurazione'] != null
           ? ConfigurazioneGruppo.daMappa(mappa['configurazione'] as Map<String, dynamic>)
@@ -42,7 +41,7 @@ class Gruppo {
       'nome': nome,
       'codiceAccesso': codiceAccesso,
       'idCreatore': idCreatore,
-      'dataCreazione': Timestamp.fromDate(dataCreazione),
+      'dataCreazione': dataCreazione,
       'attivo': attivo,
       'configurazione': configurazione.aMappa(),
     };

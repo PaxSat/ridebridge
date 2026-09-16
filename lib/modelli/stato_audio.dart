@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 /// Rappresenta lo stato audio in tempo reale di un partecipante.
 class StatoAudio {
@@ -32,7 +32,7 @@ class StatoAudio {
       prioritaAudio: mappa['prioritaAudio'] ?? false,
       staParlando: mappa['staParlando'] ?? false,
       canaleSpecialeAttivo: mappa['canaleSpecialeAttivo'] ?? false,
-      ultimoAggiornamento: (mappa['ultimoAggiornamento'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      ultimoAggiornamento: mappa['ultimoAggiornamento'] as DateTime? ?? DateTime.now(),
     );
   }
 
@@ -46,7 +46,7 @@ class StatoAudio {
       'prioritaAudio': prioritaAudio,
       'staParlando': staParlando,
       'canaleSpecialeAttivo': canaleSpecialeAttivo,
-      'ultimoAggiornamento': Timestamp.fromDate(ultimoAggiornamento),
+      'ultimoAggiornamento': ultimoAggiornamento,
     };
   }
 

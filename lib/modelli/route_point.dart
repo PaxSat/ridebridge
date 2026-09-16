@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 /// Rappresenta un punto immutabile della traccia generata dal Leader.
 class RoutePoint {
@@ -29,7 +29,7 @@ class RoutePoint {
       sequenceId: mappa['sequenceId'] ?? 0,
       latitudine: (mappa['latitudine'] as num).toDouble(),
       longitudine: (mappa['longitudine'] as num).toDouble(),
-      timestamp: (mappa['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      timestamp: mappa['timestamp'] as DateTime? ?? DateTime.now(),
       bearing: (mappa['bearing'] as num?)?.toDouble() ?? 0.0,
       distanzaDalPrecedente: (mappa['distanzaDalPrecedente'] as num?)?.toDouble() ?? 0.0,
       distanzaProgressiva: (mappa['distanzaProgressiva'] as num?)?.toDouble() ?? 0.0,
@@ -42,7 +42,7 @@ class RoutePoint {
       'sequenceId': sequenceId,
       'latitudine': latitudine,
       'longitudine': longitudine,
-      'timestamp': Timestamp.fromDate(timestamp),
+      'timestamp': timestamp,
       'bearing': bearing,
       'distanzaDalPrecedente': distanzaDalPrecedente,
       'distanzaProgressiva': distanzaProgressiva,

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 /// Rappresenta la posizione geografica e i dati di movimento di un rider.
 class PosizioneGps {
@@ -26,7 +26,7 @@ class PosizioneGps {
       altitudine: (mappa['altitudine'] as num?)?.toDouble() ?? 0.0,
       velocita: (mappa['velocita'] as num?)?.toDouble() ?? 0.0,
       direzione: (mappa['direzione'] as num?)?.toDouble() ?? 0.0,
-      ultimoAggiornamento: (mappa['ultimoAggiornamento'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      ultimoAggiornamento: mappa['ultimoAggiornamento'] as DateTime? ?? DateTime.now(),
     );
   }
 
@@ -38,7 +38,7 @@ class PosizioneGps {
       'altitudine': altitudine,
       'velocita': velocita,
       'direzione': direzione,
-      'ultimoAggiornamento': Timestamp.fromDate(ultimoAggiornamento),
+      'ultimoAggiornamento': ultimoAggiornamento,
     };
   }
 

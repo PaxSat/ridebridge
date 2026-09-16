@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../modelli/utente.dart';
+import 'firestore_mapper.dart';
 
 /// Gestisce le operazioni di persistenza su Cloud Firestore.
 class ServizioDatabase {
@@ -13,7 +14,7 @@ class ServizioDatabase {
   Future<void> salvaUtente(Utente utente) async {
     try {
       await _utentiRef.doc(utente.id).set(
-        utente.aMappa(),
+        FirestoreMapper.dateTimeToTimestamp(utente.aMappa()),
         SetOptions(merge: true),
       );
     } catch (e) {
@@ -27,7 +28,7 @@ class ServizioDatabase {
     try {
       DocumentSnapshot doc = await _utentiRef.doc(idUtente).get();
       if (doc.exists) {
-        return Utente.daMappa(doc.data() as Map<String, dynamic>, doc.id);
+        return Utente.daMappa(FirestoreMapper.timestampToDateTime(doc.data() as Map<String, dynamic>), doc.id);
       }
       return null;
     } catch (e) {

@@ -1,6 +1,6 @@
 import '../modelli/snake_state.dart';
 import '../modelli/posizione_gps.dart';
-import '../modelli/partecipante_gruppo.dart';
+import '../modelli/rider_stream_data.dart';
 
 /// Contratto astratto per il Transport Layer del sistema GeoRef.
 /// Permette di disaccoppiare la logica dei motori dal fornitore di dati (Firebase, LiveKit, Mock, ecc.)
@@ -23,11 +23,11 @@ abstract class GeorefTransport {
   /// Recupera gli avanzamenti salvati dalla Scopa (Recovery Leader).
   Future<Map<String, int>> ottieniProgressBackup(String idGruppo);
 
-  /// Pubblica la propria posizione GPS.
-  Future<void> pubblicaPosizione(String idGruppo, String idUtente, PosizioneGps posizione);
+  /// Pubblica la propria posizione GPS e l'ultimo indice dello Snake validato.
+  Future<void> pubblicaPosizione(String idGruppo, String idUtente, PosizioneGps posizione, {int? lastValidatedIndex});
 
-  /// Stream delle posizioni e stati di tutti i partecipanti del gruppo.
-  Stream<Map<String, PartecipanteGruppo>> streamPosizioni(String idGruppo);
+  /// Stream delle posizioni e avanzamenti in tempo reale dei partecipanti.
+  Stream<Map<String, RiderStreamData>> streamPosizioni(String idGruppo);
 
   /// Stream dello stato del servizio GPS (abilitato/disabilitato).
   Stream<bool> get streamStatoGps;
