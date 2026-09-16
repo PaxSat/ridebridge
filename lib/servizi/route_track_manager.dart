@@ -26,6 +26,13 @@ class RouteTrackManager {
     _nextSequenceId = 0;
   }
 
+  /// Ripristina lo stato della traccia da una sorgente esterna (Recovery).
+  void ripristinaStato(List<RoutePoint> punti, int ultimoSequenceId) {
+    _track.clear();
+    _track.addAll(punti);
+    _nextSequenceId = ultimoSequenceId + 1;
+  }
+
   /// Analizza una nuova posizione del leader e decide se generare un nuovo RoutePoint.
   /// Ritorna il nuovo [RoutePoint] se creato, altrimenti null.
   /// Logica V2: distanza >= 25m AND tempo >= 4s.

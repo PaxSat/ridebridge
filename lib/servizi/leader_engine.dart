@@ -44,4 +44,9 @@ class LeaderEngine {
   RoutePoint? ultimoRoutePoint() => _trackManager.ultimoRoutePoint();
   double lunghezzaPercorso() => _trackManager.lunghezzaPercorso();
   void reset() => _trackManager.reset();
+
+  /// Ripristina lo stato del motore da uno snapshot esistente (Recovery).
+  void ripristinaStato(List<RoutePoint> punti, int ultimoSequenceId) {
+    _trackManager.ripristinaStato(punti, ultimoSequenceId);
+  }
 }

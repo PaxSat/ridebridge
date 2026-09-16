@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import 'package:collection/collection.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
 import '../servizi/georef_controller.dart';
@@ -276,8 +277,10 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
             final traccia = controller.leaderEngine.ottieniRoutePoints();
             double distProssimoPunto = 0.0;
-            if (p != null && p.nextTargetIndex < traccia.length) {
-              final target = traccia[p.nextTargetIndex];
+            
+            final target = traccia.firstWhereOrNull((pt) => pt.sequenceId == (p?.nextTargetIndex ?? -1));
+
+            if (p != null && target != null) {
               final miaPos = controller.ultimePosizioni[id];
               if (miaPos != null) {
                 distProssimoPunto = LocationEvaluator().distanzaTraDuePunti(

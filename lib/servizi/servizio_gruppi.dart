@@ -7,6 +7,7 @@ import '../modelli/stato_audio.dart';
 import '../modelli/posizione_gps.dart';
 
 import '../modelli/configurazione_gruppo.dart';
+import '../modelli/snake_state.dart';
 
 /// Gestisce le operazioni relative ai gruppi su Cloud Firestore.
 class ServizioGruppi {
@@ -294,6 +295,43 @@ class ServizioGruppi {
     await batch.commit();
   }
 
+  /// Permette a un utente (tipicamente la Scopa) di assumere il ruolo di Leader
+  /// nel caso in cui il Leader originale non sia più presente o attivo.
+  Future<void> takeoverLeader(String idGruppo, String idNuovoLeader) async {
+    try {
+      final snapshot = await _gruppiRef.doc(idGruppo).collection('partecipanti').get();
+      final batch = _firestore.batch();
+      
+      for (var doc in snapshot.docs) {
+        if (doc.data()['ruolo'] == RuoloGruppo.leader.name) {
+          // Declassa il vecchio leader a partecipante semplice
+          batch.update(doc.reference, {
+            'ruolo': RuoloGruppo.partecipante.name,
+            'statoAudio.prioritaAudio': false,
+          });
+        }
+      }
+
+      // Promuove il nuovo leader
+      batch.update(
+        _gruppiRef.doc(idGruppo).collection('partecipanti').doc(idNuovoLeader),
+        {
+          'ruolo': RuoloGruppo.leader.name,
+          'statoAudio.prioritaAudio': true,
+        },
+      );
+
+      // Aggiorna la proprietà del gruppo
+      batch.update(_gruppiRef.doc(idGruppo), {'idCreatore': idNuovoLeader});
+
+      await batch.commit();
+      debugPrint('[GROUPS] Takeover completato: $idNuovoLeader è il nuovo Leader.');
+    } catch (e) {
+      debugPrint('Errore durante il takeover del Leader: $e');
+      rethrow;
+    }
+  }
+
   /// Abilita il microfono per un partecipante.
   Future<void> abilitaMicrofonoPartecipante(String idGruppo, String idLeader, String idPartecipante) async {
     if (!await _eLeader(idGruppo, idLeader)) {
@@ -504,6 +542,83 @@ class ServizioGruppi {
       }
     } catch (e) {
       debugPrint('Errore Garbage Collection Firestore: $e');
+    }
+  }
+
+  /// Aggiorna lo stato dello Snake su Firestore. Solo il Leader dovrebbe chiamarlo.
+  Future<void> aggiornaSnakeState(String idGruppo, SnakeState stato) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('stato_snake')
+          .doc('attuale')
+          .set(stato.aMappa());
+    } catch (e) {
+      debugPrint('Errore aggiornamento SnakeState: $e');
+    }
+  }
+
+  /// Recupera l'ultimo SnakeState salvato (Recovery).
+  Future<SnakeState?> ottieniSnakeState(String idGruppo) async {
+    try {
+      final doc = await _gruppiRef
+          .doc(idGruppo)
+          .collection('stato_snake')
+          .doc('attuale')
+          .get();
+      
+      if (!doc.exists || doc.data() == null) return null;
+      return SnakeState.daMappa(doc.data()!);
+    } catch (e) {
+      debugPrint('Errore recupero SnakeState: $e');
+      return null;
+    }
+  }
+
+  /// Stream per ricevere gli aggiornamenti dello SnakeState in tempo reale.
+  Stream<SnakeState?> streamSnakeState(String idGruppo) {
+    return _gruppiRef
+        .doc(idGruppo)
+        .collection('stato_snake')
+        .doc('attuale')
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return SnakeState.daMappa(doc.data()!);
+    });
+  }
+
+  /// Aggiorna gli avanzamenti dei Rider registrati dalla Scopa su Firestore.
+  Future<void> aggiornaAvanzamentiScopa(String idGruppo, Map<String, int> avanzamenti) async {
+    try {
+      await _gruppiRef
+          .doc(idGruppo)
+          .collection('stato_scopa')
+          .doc('attuale')
+          .set({
+            'avanzamenti': avanzamenti,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('Errore aggiornamento avanzamenti Scopa: $e');
+    }
+  }
+
+  /// Recupera gli avanzamenti dei Rider registrati dalla Scopa (usato dal Leader nel Recovery).
+  Future<Map<String, int>> ottieniAvanzamentiScopa(String idGruppo) async {
+    try {
+      final doc = await _gruppiRef
+          .doc(idGruppo)
+          .collection('stato_scopa')
+          .doc('attuale')
+          .get();
+      
+      if (!doc.exists || doc.data() == null) return {};
+      final mappaAvanzamenti = doc.data()!['avanzamenti'] as Map<String, dynamic>? ?? {};
+      return mappaAvanzamenti.map((key, value) => MapEntry(key, value as int));
+    } catch (e) {
+      debugPrint('Errore recupero avanzamenti Scopa: $e');
+      return {};
     }
   }
 }

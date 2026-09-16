@@ -84,28 +84,23 @@ class SnakeFormationManager {
     // Troviamo l'indice reale del target nella lista
     int targetListIndex = traccia.indexWhere((p) => p.sequenceId == nextTargetSeqId);
     
-    if (targetListIndex == -1) {
-       return progressAttuale.copiaCon(
-         ultimoAggiornamento: DateTime.now(), 
-         ultimaPosizioneGps: pos
-       );
-    }
-
-    int maxSearch = (targetListIndex + _lookAheadWindow).clamp(0, traccia.length - 1);
-    
     int? nuovoValidatoSeqId;
     double distDalPunto = 0.0;
 
-    // Controlliamo in sequenza il target e i pochissimi punti successivi ammessi
-    for (int i = targetListIndex; i <= maxSearch; i++) {
-      final dist = _evaluator.distanzaTraDuePunti(
-        pos.latitudine, pos.longitudine,
-        traccia[i].latitudine, traccia[i].longitudine,
-      );
+    // Se il target esiste ancora nella finestra attiva, proviamo a validare il passaggio
+    if (targetListIndex != -1) {
+      int maxSearch = (targetListIndex + _lookAheadWindow).clamp(0, traccia.length - 1);
+      
+      for (int i = targetListIndex; i <= maxSearch; i++) {
+        final dist = _evaluator.distanzaTraDuePunti(
+          pos.latitudine, pos.longitudine,
+          traccia[i].latitudine, traccia[i].longitudine,
+        );
 
-      if (dist < _validationRadius) {
-        nuovoValidatoSeqId = traccia[i].sequenceId;
-        distDalPunto = dist;
+        if (dist < _validationRadius) {
+          nuovoValidatoSeqId = traccia[i].sequenceId;
+          distDalPunto = dist;
+        }
       }
     }
 
@@ -235,6 +230,37 @@ class SnakeFormationManager {
     }
 
     return StatoCarovana.inGroup;
+  }
+
+  /// Ripristina l'avanzamento dei rider usando i dati forniti dalla Scopa (Recovery del Leader).
+  void ripristinaAvanzamentiRider(Map<String, int> avanzamenti, List<RoutePoint> traccia) {
+    avanzamenti.forEach((uid, lastIdx) {
+      if (lastIdx >= 0) {
+        RoutePoint? point;
+        for (var pt in traccia) {
+          if (pt.sequenceId == lastIdx) {
+            point = pt;
+            break;
+          }
+        }
+        final baseProgress = point?.distanzaProgressiva ?? 0.0;
+        final id = point?.id;
+        
+        _progressi[uid] = RouteProgress(
+          uid: uid,
+          lastValidatedIndex: lastIdx,
+          lastValidatedId: id,
+          nextTargetIndex: lastIdx + 1,
+          routeProgress: baseProgress,
+          ultimoAggiornamento: DateTime.now(),
+          ultimaPosizioneGps: PosizioneGps(
+            latitudine: point?.latitudine ?? 0.0,
+            longitudine: point?.longitudine ?? 0.0,
+            ultimoAggiornamento: DateTime.now(),
+          ),
+        );
+      }
+    });
   }
 
   void reset() {
