@@ -27,6 +27,7 @@
   "convoyThresholds": "Soglie Carovana",
   "maxGroupDistance": "Distanza Max Gruppo (metri)",
   "maxSweeperDistance": "Distanza Max Scopa (metri)",
+  "maxGhostDistance": "Distanza Max Ghost (metri)",
   "offRouteThreshold": "Soglia Fuori Percorso (metri)",
   "saveConfiguration": "SALVA CONFIGURAZIONE",
   "configSaved": "Configurazione salvata",

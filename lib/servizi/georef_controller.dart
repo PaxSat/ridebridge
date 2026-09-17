@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/avviso_carovana.dart';
@@ -47,6 +48,7 @@ class GeoRefController extends ChangeNotifier {
 
   // Stato Operativo
   bool _isAttivo = false;
+  bool _sessioneAvviataConPartecipanti = false; // Per Auto-Ghost
   String? _idGruppoCorrente;
   String? _mioUid;
   RuoloGruppo? _mioRuolo;
@@ -96,11 +98,52 @@ class GeoRefController extends ChangeNotifier {
   Map<String, PosizioneGps> get ultimePosizioni => _ultimePosizioni;
   List<PartecipanteGruppo> get tuttiIMembriGruppo => _tuttiIMembriGruppo;
 
+  /// Restituisce la lista dei rider effettivamente attivi nella carovana.
+  List<PartecipanteGruppo> get riderPartecipanti {
+    final List<PartecipanteGruppo> attivi = [];
+    
+    // Iniziamo controllando se ci siamo noi (Leader locale o Rider attivo)
+    if (_mioUid != null && _isAttivo) {
+      final me = _snapshotRidersCompleti[_mioUid!];
+      if (me != null) {
+        bool isLeader = me.ruolo == RuoloGruppo.leader;
+        if (DebugManager().gpsFake) {
+          if (_uidsVirtualiEntrati.contains(_mioUid!) || isLeader) {
+            attivi.add(me);
+          }
+        } else {
+          if (me.partecipando || isLeader) {
+            attivi.add(me);
+          }
+        }
+      }
+    }
+
+    // Aggiungiamo gli altri rider dalla cache
+    for (var p in _snapshotRidersCompleti.values) {
+      if (p.idUtente == _mioUid) continue; // Già gestito sopra
+
+      bool isLeader = p.ruolo == RuoloGruppo.leader;
+      if (DebugManager().gpsFake) {
+        if (_uidsVirtualiEntrati.contains(p.idUtente) || isLeader) {
+          attivi.add(p);
+        }
+      } else {
+        if (p.partecipando) {
+          attivi.add(p);
+        }
+      }
+    }
+    
+    return attivi;
+  }
+
   /// Avvia il sistema GeoRef (Bootstrap Reale).
   Future<void> start({
     required String idGruppo,
     required String mioUid,
     required RuoloGruppo mioRuolo,
+    ConfigurazioneGruppo? configurazione,
   }) async {
     if (_isAttivo) return;
 
@@ -110,8 +153,19 @@ class GeoRefController extends ChangeNotifier {
     _isAttivo = true;
 
     // Sincronizzazione soglie tracciamento
-    _trackManager.aggiornaSoglie(_config.snakeDistanceMeters, _config.snakeTimeSeconds);
+    final config = configurazione ?? _config;
+    _trackManager.aggiornaSoglie(config.snakeDistanceMeters, config.snakeTimeSeconds, config.turnThresholdAngle);
     _leaderEngine.ghostSnake = DebugManager().ghostSnake;
+    _leaderEngine.distanzaMassimaGhost = config.distanzaMassimaGhost;
+    _sessioneAvviataConPartecipanti = false; 
+
+    // Forza ingresso immediato nella cache locale per reattività UI
+    _snapshotRidersCompleti[mioUid] = PartecipanteGruppo(
+      idUtente: mioUid,
+      ruolo: mioRuolo,
+      partecipando: true,
+      online: true,
+    );
 
     // 1. Imposta partecipazione attiva tramite Transport
     await _transport.aggiornaPartecipazione(idGruppo, mioUid, true);
@@ -147,6 +201,9 @@ class GeoRefController extends ChangeNotifier {
     // 3. Inizializza sorgente dati (Real / Fake)
     _cambiaSorgenteGps(!DebugManager().gpsFake);
     
+    // Attiva Wakelock per mantenere lo schermo acceso
+    WakelockPlus.enable();
+    
     notifyListeners();
   }
 
@@ -181,6 +238,9 @@ class GeoRefController extends ChangeNotifier {
     _tailState = null;
     _tuttiIMembriGruppo.clear();
     _uidsVirtualiEntrati.clear();
+
+    // Disattiva Wakelock
+    WakelockPlus.disable();
 
     notifyListeners();
   }
@@ -219,13 +279,21 @@ class GeoRefController extends ChangeNotifier {
         notifyListeners();
       });
     } else {
+      // MODALITÀ FAKE: Transizione (Espulsione e Reset DB)
+      if (_idGruppoCorrente != null) {
+        final sg = ServizioGruppi();
+        sg.cancellaEventiPercorso(_idGruppoCorrente!); // Reset DB di viaggio (Punti + Stati)
+      }
+
       _fakeGps.impostaPuntoPartenza(DebugManager().latFake, DebugManager().lonFake);
       
-      // RESET TOTALE per pulizia "Leader fantasma"
+      // RESET TOTALE LOCAL CACHE per pulizia laboratorio
       _uidsVirtualiEntrati.clear();
       _snapshotRidersCompleti.clear();
       _ultimePosizioni.clear();
       _progressi.clear();
+      _leaderEngine.reset();
+      _followerEngine.reset();
 
       if (_idGruppoCorrente != null) {
         // 1. Stream per avere sempre la lista aggiornata di chi FA PARTE del gruppo (Firestore)
@@ -234,12 +302,12 @@ class GeoRefController extends ChangeNotifier {
           _tuttiIMembriGruppo.addAll(membri);
           _fakeGps.aggiornaMembriSimulazione(membri);
           
-          // NOTA: Non popoliamo _snapshotRidersCompleti qui in modalità FAKE.
-          // Aspettiamo che l'utente prema "ENTRA RIDER" per ogni singolo membro.
+          // In modalità FAKE, non popoliamo _snapshotRidersCompleti qui.
+          // Aspettiamo che l'utente prema "ENTRA RIDER".
           notifyListeners();
         });
 
-        // 2. Ascoltiamo il simulatore ma filtriamo solo chi è "Entrato" tramite debug
+        // 2. Ascoltiamo il simulatore
         _localGpsSubscription = _fakeGps.streamPosizioni.listen((posizioni) {
           final Map<String, RiderStreamData> streamMap = {};
           
@@ -269,17 +337,16 @@ class GeoRefController extends ChangeNotifier {
   void _aggiornaAnagraficaMembri(List<PartecipanteGruppo> membri) {
     // Aggiorna l'anagrafica stabile (Ruoli, online, partecipando)
     for (var m in membri) {
-      final esistente = _snapshotRidersCompleti[m.idUtente];
-      if (esistente == null) {
-        _snapshotRidersCompleti[m.idUtente] = m;
-      } else {
-        _snapshotRidersCompleti[m.idUtente] = m;
-      }
+      _snapshotRidersCompleti[m.idUtente] = m;
     }
     
     // Rimuoviamo chi non è più nel gruppo Firestore
     final uidsAttuali = membri.map((e) => e.idUtente).toSet();
-    _snapshotRidersCompleti.removeWhere((uid, _) => !uidsAttuali.contains(uid));
+    _snapshotRidersCompleti.removeWhere((uid, _) {
+      // PROTEZIONE: Non rimuovere mai se stessi se l'engine è attivo
+      if (uid == _mioUid && _isAttivo) return false;
+      return !uidsAttuali.contains(uid);
+    });
 
     _processaMotoreV3();
     notifyListeners();
@@ -300,7 +367,6 @@ class GeoRefController extends ChangeNotifier {
 
   void _processaMotoreV3() {
     // Identificazione sicura del Leader e della Scopa (anche in modalità Fake)
-    // Cerchiamo prima tra i membri reali caricati da Firestore
     final leaderKey = _snapshotRidersCompleti.values
             .firstWhereOrNull((p) => p.ruolo == RuoloGruppo.leader)
             ?.idUtente ??
@@ -313,14 +379,16 @@ class GeoRefController extends ChangeNotifier {
     final leaderPos = _ultimePosizioni[leaderKey];
     
     // Filtriamo i partecipanti che stanno effettivamente partecipando.
-    // In modalità FAKE, la partecipazione è determinata dal set _uidsVirtualiEntrati.
-    // Il Leader viene forzato come attivo in FAKE per permettere la generazione dello Snake immediata.
-    final partecipantiAttivi = _snapshotRidersCompleti.values.where((p) {
-      if (DebugManager().gpsFake) {
-        return _uidsVirtualiEntrati.contains(p.idUtente) || p.ruolo == RuoloGruppo.leader;
-      }
-      return p.partecipando;
-    }).toList();
+    final partecipantiAttivi = riderPartecipanti;
+
+    // Gestione LOGICA AUTO-GHOST
+    if (partecipantiAttivi.length > 1) {
+      _sessioneAvviataConPartecipanti = true;
+    }
+    
+    if (_mioRuolo == RuoloGruppo.leader && partecipantiAttivi.length <= 1 && _sessioneAvviataConPartecipanti) {
+      _leaderEngine.autoGhostActive = true;
+    }
 
     bool snakeCambiato = false;
     final List<RoutePoint> traccia;
@@ -427,9 +495,17 @@ class GeoRefController extends ChangeNotifier {
           ? traccia.where((p) => p.sequenceId <= minValidatedIndex).map((p) => p.sequenceId).toList()
           : <int>[];
 
+      // Verifichiamo se la coda è rientrata nell'area "Normal"
+      final leaderProgress = _progressi[leaderKey]?.routeProgress ?? 0.0;
+      final tailProgress = _tailState?.tailIndex != null 
+          ? traccia.firstWhereOrNull((pt) => pt.sequenceId == _tailState!.tailIndex)?.distanzaProgressiva ?? 0.0
+          : 0.0;
+      final bool codaInAreaNormal = (leaderProgress - tailProgress) <= _config.distanzaMassimaGruppo;
+
       final statsGC = _leaderEngine.eseguiGarbageCollection(
         completedSequenceIds: completedIds,
         distanzaMassimaGruppo: _config.distanzaMassimaGruppo,
+        codaInAreaNormal: codaInAreaNormal,
       );
       if ((statsGC['passed'] ?? 0) > 0 || (statsGC['distance'] ?? 0) > 0) {
         snakeCambiato = true;
@@ -501,7 +577,7 @@ class GeoRefController extends ChangeNotifier {
     if (_idGruppoCorrente == null || _mioRuolo != RuoloGruppo.leader) return;
     if (DebugManager().gpsFake) return; // Non pubblichiamo in modalità fake per ora
 
-    // Se non abbiamo mai inviato nulla e la traccia non è vuota, forziamo il cambiamento
+    // Se non abbiamo mai inviato nulla e la traccia non è vuota, forziamo le cambiamento
     if (_ultimoSnakeStateInviato == null && traccia.isNotEmpty) {
       cambiato = true;
     }

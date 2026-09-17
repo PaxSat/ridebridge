@@ -1,4 +1,12 @@
 
+/// Motivo per cui è stato generato un punto della traccia.
+enum PointTriggerReason {
+  time,     // Intervallo temporale raggiunto
+  distance, // Distanza minima percorsa
+  turn,     // Svolta rilevata
+  manual,   // Forzato manualmente (es. avvio)
+  unknown,
+}
 
 /// Rappresenta un punto immutabile della traccia generata dal Leader.
 class RoutePoint {
@@ -10,6 +18,7 @@ class RoutePoint {
   final double bearing;
   final double distanzaDalPrecedente;
   final double distanzaProgressiva;
+  final PointTriggerReason triggerReason;
 
   RoutePoint({
     required this.id,
@@ -20,6 +29,7 @@ class RoutePoint {
     this.bearing = 0.0,
     this.distanzaDalPrecedente = 0.0,
     this.distanzaProgressiva = 0.0,
+    this.triggerReason = PointTriggerReason.unknown,
   });
 
   /// Crea un oggetto [RoutePoint] da una mappa (es. Firestore).
@@ -43,6 +53,10 @@ class RoutePoint {
       bearing: (mappa['bearing'] as num?)?.toDouble() ?? 0.0,
       distanzaDalPrecedente: (mappa['distanzaDalPrecedente'] as num?)?.toDouble() ?? 0.0,
       distanzaProgressiva: (mappa['distanzaProgressiva'] as num?)?.toDouble() ?? 0.0,
+      triggerReason: PointTriggerReason.values.firstWhere(
+        (e) => e.name == mappa['triggerReason'],
+        orElse: () => PointTriggerReason.unknown,
+      ),
     );
   }
 
@@ -56,6 +70,7 @@ class RoutePoint {
       'bearing': bearing,
       'distanzaDalPrecedente': distanzaDalPrecedente,
       'distanzaProgressiva': distanzaProgressiva,
+      'triggerReason': triggerReason.name,
     };
   }
 
@@ -69,6 +84,7 @@ class RoutePoint {
     double? bearing,
     double? distanzaDalPrecedente,
     double? distanzaProgressiva,
+    PointTriggerReason? triggerReason,
   }) {
     return RoutePoint(
       id: id ?? this.id,
@@ -79,6 +95,7 @@ class RoutePoint {
       bearing: bearing ?? this.bearing,
       distanzaDalPrecedente: distanzaDalPrecedente ?? this.distanzaDalPrecedente,
       distanzaProgressiva: distanzaProgressiva ?? this.distanzaProgressiva,
+      triggerReason: triggerReason ?? this.triggerReason,
     );
   }
 }

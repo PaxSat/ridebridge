@@ -200,6 +200,12 @@ abstract class AppLocalizations {
   /// **'Distanza Max Scopa (metri)'**
   String get maxSweeperDistance;
 
+  /// No description provided for @maxGhostDistance.
+  ///
+  /// In it, this message translates to:
+  /// **'Distanza Max Ghost (metri)'**
+  String get maxGhostDistance;
+
   /// No description provided for @offRouteThreshold.
   ///
   /// In it, this message translates to:

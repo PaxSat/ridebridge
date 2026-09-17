@@ -7,6 +7,7 @@ class ConfigurazioneGruppo {
   final double offRouteThreshold; // Distanza massima dalla polyline prima di OFF_ROUTE
   final double snakeDistanceMeters; // Distanza minima tra punti Snake
   final double snakeTimeSeconds; // Tempo minimo tra punti Snake
+  final double distanzaMassimaGhost; // Lunghezza massima dello Snake in modalità Ghost
 
   ConfigurazioneGruppo({
     this.turnThresholdAngle = 35.0,
@@ -16,6 +17,7 @@ class ConfigurazioneGruppo {
     this.offRouteThreshold = 150.0,
     this.snakeDistanceMeters = 50.0,
     this.snakeTimeSeconds = 15.0,
+    this.distanzaMassimaGhost = 15000.0,
   });
 
   /// Preset per carovana turistica (Bilanciato).
@@ -53,6 +55,7 @@ class ConfigurazioneGruppo {
       offRouteThreshold: (mappa['offRouteThreshold'] as num?)?.toDouble() ?? 150.0,
       snakeDistanceMeters: (mappa['snakeDistanceMeters'] as num?)?.toDouble() ?? 50.0,
       snakeTimeSeconds: (mappa['snakeTimeSeconds'] as num?)?.toDouble() ?? 15.0,
+      distanzaMassimaGhost: (mappa['distanzaMassimaGhost'] as num?)?.toDouble() ?? 15000.0,
     );
   }
 
@@ -66,6 +69,7 @@ class ConfigurazioneGruppo {
       'offRouteThreshold': offRouteThreshold,
       'snakeDistanceMeters': snakeDistanceMeters,
       'snakeTimeSeconds': snakeTimeSeconds,
+      'distanzaMassimaGhost': distanzaMassimaGhost,
     };
   }
 
@@ -78,6 +82,7 @@ class ConfigurazioneGruppo {
     double? offRouteThreshold,
     double? snakeDistanceMeters,
     double? snakeTimeSeconds,
+    double? distanzaMassimaGhost,
   }) {
     return ConfigurazioneGruppo(
       turnThresholdAngle: turnThresholdAngle ?? this.turnThresholdAngle,
@@ -87,6 +92,7 @@ class ConfigurazioneGruppo {
       offRouteThreshold: offRouteThreshold ?? this.offRouteThreshold,
       snakeDistanceMeters: snakeDistanceMeters ?? this.snakeDistanceMeters,
       snakeTimeSeconds: snakeTimeSeconds ?? this.snakeTimeSeconds,
+      distanzaMassimaGhost: distanzaMassimaGhost ?? this.distanzaMassimaGhost,
     );
   }
 }

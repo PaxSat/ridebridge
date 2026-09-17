@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import 'package:collection/collection.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
+import '../modelli/route_point.dart';
 import '../servizi/georef_controller.dart';
 import '../servizi/servizio_database.dart';
 import '../servizi/debug_manager.dart';
@@ -38,6 +39,14 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   late final TextEditingController _latController;
   late final TextEditingController _lonController;
 
+  String _formattaDistanza(double metri) {
+    if (metri < 1000) {
+      return "${metri.round()} m";
+    } else {
+      return "${(metri / 1000).toStringAsFixed(1)} km";
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -60,7 +69,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
-        // Risoluzione pigra dei nomi per il pannello debug
+        // Risoluzione nomi per il pannello debug
         for (var m in controller.tuttiIMembriGruppo) {
           final uid = m.idUtente;
           if (!_nomiCache.containsKey(uid) || _nomiCache[uid] == "...") {
@@ -88,20 +97,16 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                 title: Text("📍 ${l10n.caravanStatus}"),
                 centerTitle: true,
                 actions: [
-                  ListenableBuilder(
-                    listenable: DebugManager(),
-                    builder: (context, _) => DebugManager().debugMode 
-                        ? const Padding(
-                            padding: EdgeInsets.only(right: 8.0),
-                            child: Center(
-                              child: Text(
-                                "[CRV_STAT]",
-                                style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
+                  if (debugAttivo)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8.0),
+                      child: Center(
+                        child: Text(
+                          "[CRV_STAT]",
+                          style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
                   if (controller.isAttivo)
                     TextButton(
                       onPressed: () => _confermaAbbandona(context, controller),
@@ -163,9 +168,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     if (procedi == true) {
       await controller.stop();
       if (context.mounted) {
-        // Torniamo indietro alla schermata del Gruppo (uscendo sia dalla Carovana che dalla Conversazione)
-        Navigator.of(context).pop(); // Esce dalla Carovana
-        Navigator.of(context).pop(); // Esce dalla Conversazione
+        Navigator.of(context).pop(); 
+        Navigator.of(context).pop(); 
       }
     }
   }
@@ -194,7 +198,6 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
             ],
           ),
           const SizedBox(height: 16),
-          // --- NUOVO: CONTROLLO GHOST SNAKE ---
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -214,7 +217,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                 ),
                 Switch(
                   value: dm.ghostSnake,
-                  activeColor: Colors.orange,
+                  activeThumbColor: Colors.orange,
                   onChanged: (val) {
                     controller.impostaGhostSnake(val);
                   },
@@ -272,13 +275,19 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
     
     if (listaId.isEmpty) return [];
 
+    // ORDINAMENTO LEADER IN CIMA (Step 4b)
     listaId.sort((a, b) {
+      final ruoloA = controller.snapshotRidersCompleti[a]?.ruolo;
+      final ruoloB = controller.snapshotRidersCompleti[b]?.ruolo;
+      
+      if (ruoloA == RuoloGruppo.leader) return -1;
+      if (ruoloB == RuoloGruppo.leader) return 1;
+      
       final progA = controller.progressi[a]?.routeProgress ?? 0.0;
       final progB = controller.progressi[b]?.routeProgress ?? 0.0;
       return progB.compareTo(progA);
     });
 
-    // Identificazione sicura del Leader
     String? leaderId; 
     for (var id in listaId) {
       if (controller.snapshotRidersCompleti[id]?.ruolo == RuoloGruppo.leader) {
@@ -287,7 +296,6 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       }
     }
     
-    // Se il leader non è ancora arrivato, usiamo il primo della lista per non crashare
     final leaderProg = (leaderId != null) ? (controller.progressi[leaderId]?.routeProgress ?? 0.0) : 0.0;
 
     return listaId.map((id) {
@@ -298,67 +306,73 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       final msg = controller.messaggiNavigazione[id];
       final avviso = controller.avvisiAttivi[id];
 
+      final traccia = controller.leaderEngine.ottieniRoutePoints();
+      final lastPoint = traccia.isNotEmpty ? traccia.last : null;
+      
+      double distProssimoPunto = 0.0;
+      final target = traccia.firstWhereOrNull((pt) => pt.sequenceId == (p?.nextTargetIndex ?? -1));
+
+      if (p != null && target != null) {
+        final miaPos = controller.ultimePosizioni[id];
+        if (miaPos != null) {
+          distProssimoPunto = LocationEvaluator().distanzaTraDuePunti(
+            miaPos.latitudine, miaPos.longitudine,
+            target.latitudine, target.longitudine
+          );
+        }
+      }
+
+      Widget? triggerIcon;
+      if (riderInfo.ruolo == RuoloGruppo.leader && lastPoint != null) {
+        String label = "";
+        Color color = Colors.grey;
+        switch (lastPoint.triggerReason) {
+          case PointTriggerReason.time: label = "T"; color = Colors.blue; break;
+          case PointTriggerReason.distance: label = "D"; color = Colors.green; break;
+          case PointTriggerReason.turn: label = "S"; color = Colors.red; break; // Rosso per visibilità su fondo arancio
+          case PointTriggerReason.manual: label = "M"; color = Colors.purple; break;
+          default: break;
+        }
+        if (label.isNotEmpty) {
+          triggerIcon = Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          );
+        }
+      }
+
+      final avatarColor = (riderInfo.ruolo == RuoloGruppo.leader) ? Colors.orange : (riderInfo.ruolo == RuoloGruppo.scopa ? Colors.blue : ((p?.engineState.name == 'offRoute') ? Colors.purple : Colors.green));
+
       return Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: FutureBuilder<Utente?>(
           future: _servizioDatabase.leggiUtente(id),
           builder: (context, uSnapshot) {
             final utente = uSnapshot.data;
-            final String nomeDisplay = utente?.nickname?.isNotEmpty == true
-                ? utente!.nickname!
-                : (utente?.nome ?? id.toUpperCase());
-
-            final ruolo = riderInfo.ruolo;
-
-            Color avatarColor;
-            if (ruolo == RuoloGruppo.leader) {
-              avatarColor = Colors.orange;
-            } else if (ruolo == RuoloGruppo.scopa) {
-              avatarColor = Colors.blue;
-            } else {
-              avatarColor = (p?.engineState.name == 'offRoute') ? Colors.purple : Colors.green;
-            }
-
-            final traccia = controller.leaderEngine.ottieniRoutePoints();
-            double distProssimoPunto = 0.0;
-            
-            final target = traccia.firstWhereOrNull((pt) => pt.sequenceId == (p?.nextTargetIndex ?? -1));
-
-            if (p != null && target != null) {
-              final miaPos = controller.ultimePosizioni[id];
-              if (miaPos != null) {
-                distProssimoPunto = LocationEvaluator().distanzaTraDuePunti(
-                  miaPos.latitudine, miaPos.longitudine,
-                  target.latitudine, target.longitudine
-                );
-              }
-            }
+            final String nomeDisplay = utente?.nickname?.isNotEmpty == true ? utente!.nickname! : (utente?.nome ?? id.toUpperCase());
 
             return ExpansionTile(
-              leading: CircleAvatar(
-                backgroundColor: avatarColor,
-                child: Icon(
-                  ruolo == RuoloGruppo.leader ? Icons.star : (ruolo == RuoloGruppo.scopa ? Icons.cleaning_services : Icons.person),
-                  color: Colors.white,
-                ),
+              leading: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: avatarColor,
+                    child: Icon(
+                      riderInfo.ruolo == RuoloGruppo.leader ? Icons.star : (riderInfo.ruolo == RuoloGruppo.scopa ? Icons.cleaning_services : Icons.person),
+                      color: Colors.white,
+                    ),
+                  ),
+                  triggerIcon,
+                ].whereType<Widget>().toList(),
               ),
-              title: Text(
-                nomeDisplay, 
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                traccia.length >= 2 
-                  ? (avviso?.messaggio ?? msg ?? "In marcia...") 
-                  : "IN ATTESA DI SNAKE",
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              title: Text(nomeDisplay, style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+              subtitle: Text(traccia.length >= 2 ? (avviso?.messaggio ?? msg ?? "In marcia...") : "IN ATTESA DI SNAKE", maxLines: 1, overflow: TextOverflow.ellipsis),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text("${p?.routeProgress.round() ?? 0}m", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(_formattaDistanza(p?.routeProgress ?? 0.0), style: const TextStyle(fontWeight: FontWeight.bold)),
                   const Text("progresso", style: TextStyle(fontSize: 10, color: Colors.grey)),
                 ],
               ),
@@ -370,8 +384,8 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                       children: [
                         _rigaDettaglio("Punto percorso (ID)", "${p.lastValidatedIndex}"),
                         _rigaDettaglio("Prossimo obiettivo", "${p.nextTargetIndex}"),
-                        _rigaDettaglio("Distanza dal prossimo punto", "${distProssimoPunto.round()} m"),
-                        _rigaDettaglio("Distanza dal Leader", "${(leaderProg - p.routeProgress).round()} m"),
+                        _rigaDettaglio("Distanza dal prossimo punto", _formattaDistanza(distProssimoPunto)),
+                        _rigaDettaglio("Distanza dal Leader", _formattaDistanza(leaderProg - p.routeProgress)),
                         if (p.engineState.name == 'offRoute')
                           const Padding(
                             padding: EdgeInsets.only(top: 8.0),

@@ -14,16 +14,19 @@ class RouteTrackManager {
   // Configurazione soglie
   double sogliaDistanzaMeters;
   Duration sogliaTempo;
+  double sogliaSvoltaGradi;
 
   RouteTrackManager({
     this.sogliaDistanzaMeters = 50.0,
     this.sogliaTempo = const Duration(seconds: 15),
+    this.sogliaSvoltaGradi = 20.0,
   });
 
   /// Aggiorna le soglie operative dalla configurazione del gruppo.
-  void aggiornaSoglie(double distanza, double secondi) {
+  void aggiornaSoglie(double distanza, double secondi, double gradi) {
     sogliaDistanzaMeters = distanza;
     sogliaTempo = Duration(seconds: secondi.round());
+    sogliaSvoltaGradi = gradi;
   }
 
   /// Pulisce l'intera traccia corrente.
@@ -41,7 +44,7 @@ class RouteTrackManager {
 
   /// Analizza una nuova posizione del leader e decide se generare un nuovo RoutePoint.
   /// Ritorna il nuovo [RoutePoint] se creato, altrimenti null.
-  /// Logica V2: distanza >= 25m AND tempo >= 4s.
+  /// Logica V3: (distanza >= soglia AND tempo >= soglia) OR (svolta rilevata).
   /// [ignoreTimeThreshold] permette di saltare il controllo temporale (es. per simulatore Fake).
   RoutePoint? aggiungiPosizioneLeader(PosizioneGps pos, {bool ignoreTimeThreshold = false}) {
     if (_track.isEmpty) {
@@ -54,6 +57,7 @@ class RouteTrackManager {
         bearing: pos.direzione,
         distanzaDalPrecedente: 0.0,
         distanzaProgressiva: 0.0,
+        triggerReason: PointTriggerReason.manual,
       );
       _track.add(primoPunto);
       return primoPunto;
@@ -70,27 +74,44 @@ class RouteTrackManager {
     // Calcolo tempo trascorso dall'ultimo punto
     final tempoTrascorso = pos.ultimoAggiornamento.difference(ultimo.timestamp);
 
-    // Verifichiamo se le soglie sono state superate.
-    // In modalità ignoreTimeThreshold (Fake), abbassiamo leggermente la soglia di distanza (24m)
-    // per compensare arrotondamenti nei calcoli GPS del simulatore.
+    // Calcolo bearing reale del segmento attuale (dall'ultimo punto alla posizione corrente)
+    final bearingAttuale = _evaluator.calcolaBearing(
+      ultimo.latitudine, ultimo.longitudine,
+      pos.latitudine, pos.longitudine,
+    );
+
+    // Rilevamento Svolta: differenza tra bearing dell'ultimo segmento e quello attuale
+    double diffBearing = (bearingAttuale - ultimo.bearing).abs();
+    if (diffBearing > 180) diffBearing = 360 - diffBearing;
+
+    // CONDIZIONI DI TRIGGER
+    // 1. Svolta: se l'angolo cambia sensibilmente e ci siamo mossi almeno un po' (min 15m per evitare rumore GPS)
+    bool triggerTurn = diffBearing >= sogliaSvoltaGradi && distanza >= 15.0;
+    
+    // 2. Distanza e Tempo (AND logic tradizionale)
     final sogliaDistanzaEffettiva = ignoreTimeThreshold ? 24.0 : sogliaDistanzaMeters;
+    bool triggerDistance = distanza >= sogliaDistanzaEffettiva;
+    bool triggerTime = tempoTrascorso >= sogliaTempo || ignoreTimeThreshold;
 
-    if (distanza >= sogliaDistanzaEffettiva && (tempoTrascorso >= sogliaTempo || ignoreTimeThreshold)) {
-      // Calcolo bearing reale del segmento (P-1 -> P)
-      final bearingSegmento = _evaluator.calcolaBearing(
-        ultimo.latitudine, ultimo.longitudine,
-        pos.latitudine, pos.longitudine,
-      );
+    PointTriggerReason? reason;
+    if (triggerTurn) {
+      reason = PointTriggerReason.turn;
+    } else if (triggerDistance && triggerTime) {
+      // Se è scattato per distanza+tempo, diamo priorità alla distanza come etichetta
+      reason = PointTriggerReason.distance;
+    }
 
+    if (reason != null) {
       final nuovoPunto = RoutePoint(
         id: _uuid.v4(),
         sequenceId: _nextSequenceId++,
         latitudine: pos.latitudine,
         longitudine: pos.longitudine,
         timestamp: pos.ultimoAggiornamento,
-        bearing: bearingSegmento,
+        bearing: bearingAttuale,
         distanzaDalPrecedente: distanza,
         distanzaProgressiva: ultimo.distanzaProgressiva + distanza,
+        triggerReason: reason,
       );
       _track.add(nuovoPunto);
       return nuovoPunto;

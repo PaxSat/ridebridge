@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../l10n/app_localizations.dart';
+import '../servizi/debug_manager.dart';
 
 /// Schermata che mostra le informazioni sull'app e lo sviluppatore.
 class SchermataInfo extends StatefulWidget {
@@ -44,6 +45,17 @@ class _SchermataInfoState extends State<SchermataInfo> {
       appBar: AppBar(
         title: Text(l10n.appInfo),
         centerTitle: true,
+        actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(child: Text("[INFO]", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(

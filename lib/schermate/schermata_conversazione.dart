@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,16 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     super.initState();
     if (_uid != null) {
       _servizioGruppi.aggiornaPresenza(widget.gruppo.id, _uid, true);
+    }
+    
+    // Assicuriamoci che l'engine sia attivo se siamo in questa pagina
+    if (!_geoRefController.isAttivo && _uid != null) {
+      _geoRefController.start(
+        idGruppo: widget.gruppo.id,
+        mioUid: _uid!,
+        mioRuolo: widget.mioRuoloIniziale,
+        configurazione: widget.gruppo.configurazione,
+      );
     }
   }
 
@@ -270,31 +281,157 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
 
   Widget _costruisciSezioneParlante() {
     final l10n = AppLocalizations.of(context)!;
+    final String currentUid = _uid ?? "";
 
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: _sosAttivo ? Colors.red.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _sosAttivo ? Colors.red : Colors.orange.withValues(alpha: 0.3)),
-      ),
+    return ListenableBuilder(
+      listenable: _geoRefController,
+      builder: (context, _) {
+        final partecipantiAttivi = _geoRefController.riderPartecipanti;
+        final nPartecipanti = partecipantiAttivi.length;
+
+        final mioProgresso = _geoRefController.progressi[currentUid];
+        
+        // Calcolo posizione in carovana (ordinata per progresso decrescente)
+        final partecipantiOrdinati = partecipantiAttivi.toList();
+        partecipantiOrdinati.sort((a, b) {
+          final progA = _geoRefController.progressi[a.idUtente]?.routeProgress ?? 0.0;
+          final progB = _geoRefController.progressi[b.idUtente]?.routeProgress ?? 0.0;
+          return progB.compareTo(progA);
+        });
+        final indiceInCarovana = partecipantiOrdinati.indexWhere((p) => p.idUtente == currentUid);
+        final miaPosizione = indiceInCarovana != -1 ? (indiceInCarovana + 1) : 0;
+
+        // Identificazione Leader e Coda per distanze topologiche
+        double leaderProg = 0.0;
+        double tailProg = 0.0;
+        
+        for (var p in _geoRefController.snapshotRidersCompleti.values) {
+          if (p.ruolo == RuoloGruppo.leader) {
+            leaderProg = _geoRefController.progressi[p.idUtente]?.routeProgress ?? 0.0;
+          }
+        }
+        
+        if (_geoRefController.tailState != null) {
+          final traccia = _geoRefController.leaderEngine.ottieniRoutePoints();
+          final tailPoint = traccia.firstWhereOrNull((pt) => pt.sequenceId == _geoRefController.tailState!.tailIndex);
+          tailProg = tailPoint?.distanzaProgressiva ?? 0.0;
+        }
+
+        final distLeader = (leaderProg - (mioProgresso?.routeProgress ?? 0.0)).abs();
+        final distCoda = ((mioProgresso?.routeProgress ?? 0.0) - tailProg).abs();
+        
+        final istruzione = _geoRefController.messaggiNavigazione[currentUid];
+
+        // Angolo di sterzata
+        final posGps = _geoRefController.ultimePosizioni[currentUid];
+        final bearing = posGps?.direzione.round() ?? 0;
+
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: _sosAttivo ? Colors.red.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _sosAttivo ? Colors.red : Colors.orange.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                _sosAttivo ? l10n.sosActive : l10n.speaking,
+                style: TextStyle(
+                  fontSize: 12, 
+                  fontWeight: FontWeight.bold, 
+                  color: _sosAttivo ? Colors.red : Colors.orange
+                )
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _sosAttivo ? l10n.assistanceRequested : l10n.none,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const Divider(height: 24),
+              
+              // CRUSCOTTO DI VIAGGIO (4 Colonne)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _colonnaCruscotto(
+                    icona: const Icon(Icons.format_list_numbered, size: 16, color: Colors.blueGrey),
+                    valore: miaPosizione > 0 ? "$miaPosizione/$nPartecipanti" : "-/$nPartecipanti",
+                    label: "POS",
+                  ),
+                  _colonnaCruscotto(
+                    icona: const Text("👑", style: TextStyle(fontSize: 14)),
+                    valore: _formattaDistanza(distLeader),
+                    label: "LEADER",
+                  ),
+                  _colonnaCruscotto(
+                    icona: const Text("🧹", style: TextStyle(fontSize: 14)),
+                    valore: _formattaDistanza(distCoda),
+                    label: "CODA",
+                  ),
+                  _colonnaCruscotto(
+                    icona: const Text("📐", style: TextStyle(fontSize: 14)),
+                    valore: "$bearing°",
+                    label: "ANGLE",
+                  ),
+                ],
+              ),
+              
+              if (istruzione != null && istruzione.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.navigation, size: 16, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          istruzione,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  String _formattaDistanza(double metri) {
+    if (metri < 1000) {
+      return "${metri.round()} m";
+    } else {
+      return "${(metri / 1000).toStringAsFixed(1)} km";
+    }
+  }
+
+  Widget _colonnaCruscotto({
+    required Widget icona,
+    required String valore,
+    required String label,
+  }) {
+    return Expanded(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            _sosAttivo ? l10n.sosActive : l10n.speaking,
-            style: TextStyle(
-              fontSize: 14, 
-              fontWeight: FontWeight.bold, 
-              color: _sosAttivo ? Colors.red : Colors.orange
-            )
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _sosAttivo ? l10n.assistanceRequested : l10n.none,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
+          icona,
+          const SizedBox(height: 4),
+          Text(valore, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+          Text(label, style: const TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
         ],
       ),
     );

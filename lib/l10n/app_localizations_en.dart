@@ -64,6 +64,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maxSweeperDistance => 'Max Sweeper Distance (meters)';
 
   @override
+  String get maxGhostDistance => 'Max Ghost Distance (meters)';
+
+  @override
   String get offRouteThreshold => 'Off Route Threshold (meters)';
 
   @override

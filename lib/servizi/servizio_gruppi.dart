@@ -120,7 +120,7 @@ class ServizioGruppi {
   }
 
   /// Recupera tutti i gruppi di cui l'utente fa parte.
-  Future<List<Gruppo>> mieiGruppi(String idUtente) async {
+  Future<List<Gruppo>> _mieiGruppi(String idUtente) async {
     try {
       final query = await _gruppiRef
           .where('partecipanti', arrayContains: idUtente)
@@ -133,6 +133,26 @@ class ServizioGruppi {
     } catch (e) {
       debugPrint('Errore durante il recupero dei gruppi: $e');
       rethrow;
+    }
+  }
+
+  /// Recupera tutti i gruppi di cui l'utente fa parte includendo il suo ruolo.
+  Future<List<Map<String, dynamic>>> mieiGruppiConRuolo(String idUtente) async {
+    try {
+      final gruppi = await _mieiGruppi(idUtente);
+      final List<Map<String, dynamic>> risultato = [];
+
+      for (var g in gruppi) {
+        final ruolo = await ottieniRuoloUtente(g.id, idUtente);
+        risultato.add({
+          'gruppo': g,
+          'ruolo': ruolo?.ruolo ?? RuoloGruppo.partecipante,
+        });
+      }
+      return risultato;
+    } catch (e) {
+      debugPrint('Errore recupero gruppi con ruolo: $e');
+      return [];
     }
   }
 
@@ -477,28 +497,31 @@ class ServizioGruppi {
     }
   }
 
-  /// Cancella tutti i waypoint (svolte) registrati per un gruppo.
+  /// Cancella tutti i waypoint (svolte) registrati per un gruppo e resetta gli stati.
   /// Utilizzato per pulire il database all'inizio o alla fine di una sessione.
   Future<void> cancellaEventiPercorso(String idGruppo) async {
     try {
-      // Pulizia V1
+      final batch = _firestore.batch();
+
+      // 1. Pulizia Punti (V1+V2)
       final collectionV1 = _gruppiRef.doc(idGruppo).collection('eventi_percorso');
       final snapshotsV1 = await collectionV1.get();
-      
-      final batch = _firestore.batch();
       for (var doc in snapshotsV1.docs) {
         batch.delete(doc.reference);
       }
 
-      // Pulizia V2
       final collectionV2 = _gruppiRef.doc(idGruppo).collection('route_points');
       final snapshotsV2 = await collectionV2.get();
       for (var doc in snapshotsV2.docs) {
         batch.delete(doc.reference);
       }
       
+      // 2. Reset STATI (Nuovo: Fix Bug 58km)
+      batch.delete(_gruppiRef.doc(idGruppo).collection('stato_snake').doc('attuale'));
+      batch.delete(_gruppiRef.doc(idGruppo).collection('stato_scopa').doc('attuale'));
+
       await batch.commit();
-      debugPrint('Database svolte (V1+V2) pulito per il gruppo: $idGruppo');
+      debugPrint('Database sessione (Punti + Stati) resettato per il gruppo: $idGruppo');
     } catch (e) {
       debugPrint('Errore durante la cancellazione degli eventi percorso: $e');
     }

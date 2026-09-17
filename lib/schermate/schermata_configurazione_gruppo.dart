@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/configurazione_gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
+import '../servizi/debug_manager.dart';
 
 /// Schermata per la configurazione dei parametri tecnici del gruppo.
 /// Accessibile esclusivamente al Leader.
@@ -23,6 +24,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
   late TextEditingController _triggerDistanceMeters;
   late TextEditingController _distanzaMassimaGruppo;
   late TextEditingController _distanzaMassimaScopa;
+  late TextEditingController _distanzaMassimaGhost;
   late TextEditingController _offRouteThreshold;
 
   bool _inCaricamento = false;
@@ -35,6 +37,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _triggerDistanceMeters = TextEditingController(text: c.triggerDistanceMeters.toString());
     _distanzaMassimaGruppo = TextEditingController(text: c.distanzaMassimaGruppo.toString());
     _distanzaMassimaScopa = TextEditingController(text: c.distanzaMassimaScopa.toString());
+    _distanzaMassimaGhost = TextEditingController(text: c.distanzaMassimaGhost.toString());
     _offRouteThreshold = TextEditingController(text: c.offRouteThreshold.toString());
   }
 
@@ -44,6 +47,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _triggerDistanceMeters.dispose();
     _distanzaMassimaGruppo.dispose();
     _distanzaMassimaScopa.dispose();
+    _distanzaMassimaGhost.dispose();
     _offRouteThreshold.dispose();
     super.dispose();
   }
@@ -59,6 +63,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
         triggerDistanceMeters: double.parse(_triggerDistanceMeters.text),
         distanzaMassimaGruppo: double.parse(_distanzaMassimaGruppo.text),
         distanzaMassimaScopa: double.parse(_distanzaMassimaScopa.text),
+        distanzaMassimaGhost: double.parse(_distanzaMassimaGhost.text),
         offRouteThreshold: double.parse(_offRouteThreshold.text),
       );
 
@@ -81,6 +86,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
       _triggerDistanceMeters.text = preset.triggerDistanceMeters.toString();
       _distanzaMassimaGruppo.text = preset.distanzaMassimaGruppo.toString();
       _distanzaMassimaScopa.text = preset.distanzaMassimaScopa.toString();
+      _distanzaMassimaGhost.text = preset.distanzaMassimaGhost.toString();
       _offRouteThreshold.text = preset.offRouteThreshold.toString();
     });
   }
@@ -90,7 +96,21 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.groupConfiguration), centerTitle: true),
+      appBar: AppBar(
+        title: Text(l10n.groupConfiguration), 
+        centerTitle: true,
+        actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(child: Text("[CONFIG]", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -135,6 +155,11 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
                 controller: _distanzaMassimaScopa,
                 etichetta: l10n.maxSweeperDistance,
                 suggerimento: "es. 1000.0",
+              ),
+              _campoNumerico(
+                controller: _distanzaMassimaGhost,
+                etichetta: l10n.maxGhostDistance,
+                suggerimento: "es. 15000.0",
               ),
               _campoNumerico(
                 controller: _offRouteThreshold,

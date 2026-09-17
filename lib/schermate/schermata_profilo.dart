@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_database.dart';
 import '../servizi/servizio_auth.dart';
+import '../servizi/debug_manager.dart';
 import 'schermata_login.dart';
 
 /// Schermata per la gestione del profilo utente (Nickname e Moto).
@@ -136,6 +137,17 @@ class _SchermataProfiloState extends State<SchermataProfilo> {
       appBar: AppBar(
         title: Text(l10n.myProfile),
         centerTitle: true,
+        actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(child: Text("[PROFILE]", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),

@@ -27,6 +27,7 @@
   "convoyThresholds": "Convoy Thresholds",
   "maxGroupDistance": "Max Group Distance (meters)",
   "maxSweeperDistance": "Max Sweeper Distance (meters)",
+  "maxGhostDistance": "Max Ghost Distance (meters)",
   "offRouteThreshold": "Off Route Threshold (meters)",
   "saveConfiguration": "SAVE CONFIGURATION",
   "configSaved": "Configuration saved",

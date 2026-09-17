@@ -273,14 +273,42 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
-                          // 1. Avvia la partecipazione se non è già attiva
-                          if (!(dati['partecipando'] ?? false)) {
-                            await GeoRefController().start(
-                              idGruppo: widget.gruppo.id,
-                              mioUid: _uid!,
-                              mioRuolo: mioRuolo.ruolo,
+                          final bool eLeader = mioRuolo.ruolo == RuoloGruppo.leader;
+                          
+                          if (eLeader) {
+                            final l10n = AppLocalizations.of(context)!;
+                            final cancella = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text(l10n.clearWaypointsTitle),
+                                content: Text(l10n.clearWaypointsContent),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: Text(l10n.clearWaypointsKeep),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                    child: Text(l10n.clearWaypointsConfirm),
+                                  ),
+                                ],
+                              ),
                             );
+
+                            if (cancella == true) {
+                              await _servizioGruppi.cancellaEventiPercorso(widget.gruppo.id);
+                            }
                           }
+
+                          // AVVIO FORZATO: Avviamo sempre l'engine locale quando si preme PARTECIPA
+                          // per garantire che il cruscotto sia attivo (Fix -/0)
+                          await GeoRefController().start(
+                            idGruppo: widget.gruppo.id,
+                            mioUid: _uid!,
+                            mioRuolo: mioRuolo.ruolo,
+                            configurazione: widget.gruppo.configurazione,
+                          );
                           
                           if (context.mounted) {
                             Navigator.push(

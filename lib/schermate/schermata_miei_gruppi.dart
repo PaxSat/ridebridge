@@ -33,38 +33,12 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
       final partecipante = await _servizioGruppi.ottieniRuoloUtente(gruppo.id, uid);
       
       if (partecipante != null && context.mounted) {
-        // Se l'utente è il Leader, chiediamo se vuole pulire il database delle svolte
-        if (partecipante.ruolo == RuoloGruppo.leader) {
-          final l10n = AppLocalizations.of(context)!;
-          final cancella = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(l10n.clearWaypointsTitle),
-              content: Text(l10n.clearWaypointsContent),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text(l10n.clearWaypointsKeep),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  child: Text(l10n.clearWaypointsConfirm),
-                ),
-              ],
-            ),
-          );
-
-          if (cancella == true) {
-            await _servizioGruppi.cancellaEventiPercorso(gruppo.id);
-          }
-        }
-
-        // 1. Avvia la partecipazione (Livello PARTECIPA)
+        // 1. Avvia la partecipazione (Livello PARTECIPA) - Rientro rapido senza popup
         await _geoRefController.start(
           idGruppo: gruppo.id,
           mioUid: uid,
           mioRuolo: partecipante.ruolo,
+          configurazione: gruppo.configurazione,
         );
 
         if (!context.mounted) return;
@@ -117,8 +91,8 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
           ),
         ],
       ),
-      body: FutureBuilder<List<Gruppo>>(
-        future: _servizioGruppi.mieiGruppi(_uid),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _servizioGruppi.mieiGruppiConRuolo(_uid!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -128,9 +102,9 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
             return Center(child: Text(l10n.loginError(snapshot.error.toString())));
           }
 
-          final gruppi = snapshot.data ?? [];
+          final listaDati = snapshot.data ?? [];
 
-          if (gruppi.isEmpty) {
+          if (listaDati.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -153,18 +127,33 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: gruppi.length,
+            itemCount: listaDati.length,
             itemBuilder: (context, index) {
-              final gruppo = gruppi[index];
+              final dati = listaDati[index];
+              final Gruppo gruppo = dati['gruppo'];
+              final RuoloGruppo mioRuolo = dati['ruolo'];
+
+              Widget? iconaRuolo;
+              switch (mioRuolo) {
+                case RuoloGruppo.leader:
+                  iconaRuolo = const Text("👑", style: TextStyle(fontSize: 18));
+                  break;
+                case RuoloGruppo.scopa:
+                  iconaRuolo = const Text("🧹", style: TextStyle(fontSize: 18));
+                  break;
+                default:
+                  iconaRuolo = null;
+              }
+
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  leading: const CircleAvatar(
+                  leading: CircleAvatar(
                     backgroundColor: Colors.orange,
-                    child: Icon(Icons.motorcycle, color: Colors.white),
+                    child: iconaRuolo,
                   ),
                   title: Text(
                     gruppo.nome,
@@ -174,7 +163,7 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (gruppo.idCreatore == _uid)
+                      if (mioRuolo == RuoloGruppo.leader)
                         IconButton(
                           icon: const Icon(Icons.settings, color: Colors.blueGrey),
                           onPressed: () async {
