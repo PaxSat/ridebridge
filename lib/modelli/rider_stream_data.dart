@@ -17,11 +17,21 @@ class RiderStreamData {
 
   /// Crea un oggetto da una mappa (standard Dart).
   factory RiderStreamData.daMappa(Map<String, dynamic> mappa, String uid) {
+    DateTime convertiData(dynamic data) {
+      if (data == null) return DateTime.now();
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return RiderStreamData(
       uid: uid,
       posizioneGps: PosizioneGps.daMappa(mappa['posizioneGps'] as Map<String, dynamic>),
       lastValidatedIndex: mappa['lastValidatedIndex'] as int?,
-      timestamp: mappa['timestamp'] as DateTime? ?? DateTime.now(),
+      timestamp: convertiData(mappa['timestamp']),
     );
   }
 

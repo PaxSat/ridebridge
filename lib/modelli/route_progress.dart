@@ -35,6 +35,16 @@ class RouteProgress {
 
   /// Crea un oggetto [RouteProgress] da una mappa Firestore.
   factory RouteProgress.daMappa(Map<String, dynamic> mappa, String uid) {
+    DateTime convertiData(dynamic data) {
+      if (data == null) return DateTime.now();
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return RouteProgress(
       uid: uid,
       lastValidatedIndex: mappa['lastValidatedIndex'] ?? -1,
@@ -48,7 +58,7 @@ class RouteProgress {
         orElse: () => EngineState.normal,
       ),
       consecutiveMisses: mappa['consecutiveMisses'] ?? 0,
-      ultimoAggiornamento: mappa['ultimoAggiornamento'] as DateTime? ?? DateTime.now(),
+      ultimoAggiornamento: convertiData(mappa['ultimoAggiornamento']),
       ultimaPosizioneGps: PosizioneGps.daMappa(mappa['ultimaPosizioneGps'] as Map<String, dynamic>),
     );
   }

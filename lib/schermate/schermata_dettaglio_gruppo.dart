@@ -10,6 +10,7 @@ import '../modelli/utente.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
 import '../servizi/georef_controller.dart';
+import '../servizi/debug_manager.dart';
 
 import 'schermata_dettaglio_membro.dart';
 import 'schermata_conversazione.dart';
@@ -77,9 +78,9 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
       case RuoloGruppo.leader:
         return "👑 ${l10n.leader}";
       case RuoloGruppo.scopa:
-        return "🏍️ ${l10n.scopa}";
+        return "🧹 ${l10n.scopa}";
       case RuoloGruppo.partecipante:
-        return "👤 ${l10n.participants.substring(0, l10n.participants.length - 1)}"; // Small hack for singular
+        return "👤 ${l10n.participant}";
     }
   }
 
@@ -88,7 +89,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
       case RuoloGruppo.leader:
         return "👑";
       case RuoloGruppo.scopa:
-        return "🏍️";
+        return "🧹";
       case RuoloGruppo.partecipante:
         return "👤";
     }
@@ -194,6 +195,22 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
       appBar: AppBar(
         title: Text(widget.gruppo.nome),
         centerTitle: true,
+        actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(
+                      child: Text(
+                        "[GRP_DET]",
+                        style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -293,133 +310,138 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
             ),
           ),
 
-          // Lista Partecipanti
+          // Lista Membri del Gruppo
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
                 const Icon(Icons.people_outline, color: Colors.orange),
                 const SizedBox(width: 8),
-                Text(l10n.participants, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text("MEMBRI DEL GRUPPO", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
 
           Expanded(
             child: StreamBuilder<List<PartecipanteGruppo>>(
-              stream: FirebaseFirestore.instance
-                  .collection('gruppi')
-                  .doc(widget.gruppo.id)
-                  .collection('partecipanti')
-                  .snapshots()
-                  .map((snapshot) => snapshot.docs
-                      .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
-                      .toList()),
+              stream: _servizioGruppi.streamPartecipanti(widget.gruppo.id),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final partecipanti = snapshot.data ?? [];
                 
+                final listaFinale = snapshot.data ?? [];
+                
+                // Ordiniamo per ruolo
+                listaFinale.sort((a, b) => a.ruolo.index.compareTo(b.ruolo.index));
+
+                if (listaFinale.isEmpty) {
+                  return Center(child: Text(l10n.noParticipants));
+                }
+
                 return ListView.separated(
-                  itemCount: partecipanti.length,
+                  itemCount: listaFinale.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final p = partecipanti[index];
+                    final p = listaFinale[index];
 
-                    return FutureBuilder<Utente?>(
-                      future: _servizioDatabase.leggiUtente(p.idUtente),
-                      builder: (context, uSnapshot) {
-                        final utente = uSnapshot.data;
-                        final nomePartecipante = utente?.nickname?.isNotEmpty == true
-                            ? utente!.nickname!
-                            : (utente?.nome ?? l10n.loading);
-                        
-                        return ListTile(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SchermataDettaglioMembro(
-                                  idGruppo: widget.gruppo.id,
-                                  idUtente: p.idUtente,
-                                ),
-                              ),
-                            );
-                          },
-                          leading: Stack(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Colors.grey.shade200,
-                                backgroundImage: utente?.fotoUrl != null ? NetworkImage(utente!.fotoUrl!) : null,
-                                child: utente?.fotoUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
-                              ),
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: p.online ? Colors.green : Colors.grey,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
+                        return FutureBuilder<Utente?>(
+                          future: _servizioDatabase.leggiUtente(p.idUtente),
+                          builder: (context, uSnapshot) {
+                            final utente = uSnapshot.data;
+                            final nomePartecipante = utente?.nickname?.isNotEmpty == true
+                                ? utente!.nickname!
+                                : (utente?.nome ?? (uSnapshot.connectionState == ConnectionState.waiting ? l10n.loading : "Utente ${p.idUtente.substring(0, 4)}"));
+                            
+                            return ListTile(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SchermataDettaglioMembro(
+                                      idGruppo: widget.gruppo.id,
+                                      idUtente: p.idUtente,
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          title: Row(
-                            children: [
-                              Text(
-                                "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante",
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              if (p.statoAudio?.staParlando == true)
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 8.0),
-                                  child: Icon(Icons.mic, color: Colors.green, size: 16),
-                                ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                utente?.moto?.isNotEmpty == true
-                                    ? utente!.moto!
-                                    : _formattaRuolo(p.ruolo),
-                              ),
-                              Row(
+                                );
+                              },
+                              leading: Stack(
                                 children: [
-                                  if (!p.microfonoConsentito)
-                                    const Padding(
-                                      padding: EdgeInsets.only(right: 8.0),
-                                      child: Icon(Icons.mic_off, color: Colors.red, size: 14),
+                                  CircleAvatar(
+                                    backgroundColor: Colors.grey.shade200,
+                                    backgroundImage: (utente?.fotoUrl != null && utente!.fotoUrl!.isNotEmpty) ? NetworkImage(utente.fotoUrl!) : null,
+                                    child: (utente?.fotoUrl == null || utente!.fotoUrl!.isEmpty) ? const Icon(Icons.person, color: Colors.grey) : null,
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: p.online ? Colors.green : Colors.grey,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
                                     ),
-                                  if (!p.audioConsentito)
-                                    const Padding(
-                                      padding: EdgeInsets.only(right: 8.0),
-                                      child: Icon(Icons.volume_off, color: Colors.red, size: 14),
+                                  ),
+                                ],
+                              ),
+                              title: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante",
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  if (p.statoAudio?.emergenzaAttiva == true)
-                                    Text(
-                                      "🚨 ${l10n.sos}",
-                                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                  if (p.statoAudio?.staParlando == true)
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: 8.0),
+                                      child: Icon(Icons.mic, color: Colors.green, size: 16),
                                     ),
                                 ],
                               ),
-                            ],
-                          ),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    utente?.moto?.isNotEmpty == true
+                                        ? utente!.moto!
+                                        : _formattaRuolo(p.ruolo),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Row(
+                                    children: [
+                                      if (!p.microfonoConsentito)
+                                        const Padding(
+                                          padding: EdgeInsets.only(right: 8.0),
+                                          child: Icon(Icons.mic_off, color: Colors.red, size: 14),
+                                        ),
+                                      if (!p.audioConsentito)
+                                        const Padding(
+                                          padding: EdgeInsets.only(right: 8.0),
+                                          child: Icon(Icons.volume_off, color: Colors.red, size: 14),
+                                        ),
+                                      if (p.statoAudio?.emergenzaAttiva == true)
+                                        Text(
+                                          "🚨 ${l10n.sos}",
+                                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                            );
+                          },
                         );
                       },
                     );
                   },
-                );
-              },
-            ),
-          ),
+                ),
+              ),
 
           // Azioni di Fondo
           Padding(

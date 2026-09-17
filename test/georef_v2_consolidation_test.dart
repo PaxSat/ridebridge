@@ -88,7 +88,7 @@ void main() {
       // Rider avanti a P1
       snake.aggiornaPosizionePartecipante(uid: 'rider', pos: PosizioneGps(latitudine: 0.01, longitudine: 0, ultimoAggiornamento: DateTime.now()), traccia: traccia, leaderSequenceId: 1);
 
-      final tail = snake.calcolaTailState();
+      final tail = snake.calcolaTailState(['scopa', 'rider']);
       expect(tail.tailUid, 'scopa');
       expect(tail.tailIndex, 0);
     });

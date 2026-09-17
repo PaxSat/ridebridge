@@ -20,13 +20,23 @@ class PosizioneGps {
 
   /// Crea un oggetto [PosizioneGps] da una mappa Firestore.
   factory PosizioneGps.daMappa(Map<String, dynamic> mappa) {
+    DateTime convertiData(dynamic data) {
+      if (data == null) return DateTime.now();
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return PosizioneGps(
       latitudine: (mappa['latitudine'] as num).toDouble(),
       longitudine: (mappa['longitudine'] as num).toDouble(),
       altitudine: (mappa['altitudine'] as num?)?.toDouble() ?? 0.0,
       velocita: (mappa['velocita'] as num?)?.toDouble() ?? 0.0,
       direzione: (mappa['direzione'] as num?)?.toDouble() ?? 0.0,
-      ultimoAggiornamento: mappa['ultimoAggiornamento'] as DateTime? ?? DateTime.now(),
+      ultimoAggiornamento: convertiData(mappa['ultimoAggiornamento']),
     );
   }
 

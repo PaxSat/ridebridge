@@ -39,7 +39,7 @@ void main() {
         leaderSequenceId: 9,
       );
 
-      final tail = snake.calcolaTailState();
+      final tail = snake.calcolaTailState(['user1', 'user2']);
       expect(tail.tailIndex, 2);
     });
 
@@ -68,7 +68,7 @@ void main() {
         leaderSequenceId: 9,
       );
 
-      final tail = snake.calcolaTailState();
+      final tail = snake.calcolaTailState(['lost', 'ok']);
       expect(tail.tailUid, 'ok');
       expect(tail.tailIndex, 3);
     });

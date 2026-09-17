@@ -124,6 +124,22 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               title: Text(widget.gruppo.nome),
               centerTitle: true,
               automaticallyImplyLeading: false,
+              actions: [
+                ListenableBuilder(
+                  listenable: DebugManager(),
+                  builder: (context, _) => DebugManager().debugMode 
+                      ? const Padding(
+                          padding: EdgeInsets.only(right: 16.0),
+                          child: Center(
+                            child: Text(
+                              "[CONV_LIVE]",
+                              style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
             body: ListView(
               padding: const EdgeInsets.only(bottom: 32),
@@ -163,7 +179,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
         children: [
           if (widget.mioRuoloIniziale == RuoloGruppo.leader)
             _bottoneCircolare(
-              icona: Icons.podcasts,
+              icona: Icons.cleaning_services,
               etichetta: l10n.scopa,
               colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
               onTap: _gestisciCanaleSpeciale,
@@ -351,7 +367,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
   String _ottieniEmojiRuolo(RuoloGruppo ruolo) {
     switch (ruolo) {
       case RuoloGruppo.leader: return "👑";
-      case RuoloGruppo.scopa: return "🏍️";
+      case RuoloGruppo.scopa: return "🧹";
       case RuoloGruppo.partecipante: return "👤";
     }
   }

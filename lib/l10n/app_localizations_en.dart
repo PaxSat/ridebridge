@@ -125,6 +125,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get participants => 'PARTICIPANTS';
 
   @override
+  String get participant => 'PARTICIPANT';
+
+  @override
   String get loading => 'Loading...';
 
   @override

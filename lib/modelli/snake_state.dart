@@ -19,6 +19,16 @@ class SnakeState {
   factory SnakeState.daMappa(Map<String, dynamic> mappa) {
     final listaPuntiMappa = mappa['punti'] as List<dynamic>? ?? [];
     
+    DateTime convertiData(dynamic data) {
+      if (data == null) return DateTime.now();
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     final puntiRecuperati = listaPuntiMappa.map((p) {
       final pMappa = p as Map<String, dynamic>;
       final id = pMappa['id'] ?? '';
@@ -27,7 +37,7 @@ class SnakeState {
 
     return SnakeState(
       version: mappa['version'] ?? 0,
-      timestamp: mappa['timestamp'] as DateTime? ?? DateTime.now(),
+      timestamp: convertiData(mappa['timestamp']),
       punti: puntiRecuperati,
       leaderSequenceId: mappa['leaderSequenceId'] ?? 0,
     );

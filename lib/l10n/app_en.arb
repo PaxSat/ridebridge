@@ -51,6 +51,7 @@
   "copy": "COPY",
   "yourRole": "YOUR ROLE",
   "participants": "PARTICIPANTS",
+  "participant": "PARTICIPANT",
   "loading": "Loading...",
   "codeCopied": "Code copied to clipboard",
   "memberDetail": "Member Detail",

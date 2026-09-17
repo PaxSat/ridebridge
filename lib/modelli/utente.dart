@@ -26,13 +26,23 @@ class Utente {
 
   /// Crea un oggetto [Utente] da una mappa Firestore.
   factory Utente.daMappa(Map<String, dynamic> mappa, String documentoId) {
+    DateTime? convertiData(dynamic data) {
+      if (data == null) return null;
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return null;
+      }
+    }
+
     return Utente(
       id: documentoId,
       nome: mappa['nome'] ?? '',
       email: mappa['email'] ?? '',
       fotoUrl: mappa['fotoUrl'],
-      dataRegistrazione: mappa['dataRegistrazione'] as DateTime?,
-      ultimoAccesso: mappa['ultimoAccesso'] as DateTime?,
+      dataRegistrazione: convertiData(mappa['dataRegistrazione']),
+      ultimoAccesso: convertiData(mappa['ultimoAccesso']),
       attivo: mappa['attivo'] ?? false,
       nickname: mappa['nickname'],
       moto: mappa['moto'],

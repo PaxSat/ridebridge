@@ -8,6 +8,7 @@ class Gruppo {
   final String idCreatore;
   final DateTime dataCreazione;
   final bool attivo;
+  final List<String> idPartecipanti;
   final ConfigurazioneGruppo configurazione;
 
   Gruppo({
@@ -17,18 +18,29 @@ class Gruppo {
     required this.idCreatore,
     required this.dataCreazione,
     this.attivo = true,
+    this.idPartecipanti = const [],
     ConfigurazioneGruppo? configurazione,
   }) : configurazione = configurazione ?? ConfigurazioneGruppo();
 
   /// Crea un oggetto [Gruppo] da una mappa Firestore.
   factory Gruppo.daMappa(Map<String, dynamic> mappa, String documentoId) {
+    DateTime convertiData(dynamic data) {
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return Gruppo(
       id: documentoId,
       nome: mappa['nome'] ?? '',
       codiceAccesso: mappa['codiceAccesso'] ?? '',
       idCreatore: mappa['idCreatore'] ?? '',
-      dataCreazione: mappa['dataCreazione'] as DateTime? ?? DateTime.now(),
+      dataCreazione: convertiData(mappa['dataCreazione']),
       attivo: mappa['attivo'] ?? true,
+      idPartecipanti: List<String>.from(mappa['partecipanti'] ?? []),
       configurazione: mappa['configurazione'] != null
           ? ConfigurazioneGruppo.daMappa(mappa['configurazione'] as Map<String, dynamic>)
           : ConfigurazioneGruppo(),
@@ -43,6 +55,7 @@ class Gruppo {
       'idCreatore': idCreatore,
       'dataCreazione': dataCreazione,
       'attivo': attivo,
+      'partecipanti': idPartecipanti,
       'configurazione': configurazione.aMappa(),
     };
   }

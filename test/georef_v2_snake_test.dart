@@ -152,7 +152,7 @@ void main() {
       // Rider 1 a P0
       snakeManager.aggiornaPosizionePartecipante(uid: 'r1', pos: PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: t0), traccia: trackManager.ottieniRoutePoints(), leaderSequenceId: 1);
       
-      final tail = snakeManager.calcolaTailState();
+      final tail = snakeManager.calcolaTailState(['r1']);
       expect(tail.tailIndex, 0);
 
       // GC fallisce perché p0 non è completato

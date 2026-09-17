@@ -176,6 +176,8 @@ class ServizioGruppi {
 
   /// Stream della lista dei partecipanti per aggiornamenti real-time.
   Stream<List<PartecipanteGruppo>> streamPartecipanti(String idGruppo) {
+    // Semplifichiamo lo stream ascoltando solo la sottocollezione partecipanti per la massima reattività.
+    // I membri sono comunque registrati qui non appena aprono il dettaglio o entrano nel gruppo.
     return _gruppiRef
         .doc(idGruppo)
         .collection('partecipanti')
@@ -390,7 +392,7 @@ class ServizioGruppi {
           .doc(idGruppo)
           .collection('partecipanti')
           .doc(idUtente)
-          .update({'partecipando': partecipando});
+          .set({'partecipando': partecipando}, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Errore aggiornaPartecipazione: $e');
     }
@@ -403,10 +405,10 @@ class ServizioGruppi {
           .doc(idGruppo)
           .collection('partecipanti')
           .doc(idUtente)
-          .update({
+          .set({
             'online': online,
             'ultimoAccesso': FieldValue.serverTimestamp(),
-          });
+          }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Errore aggiornamento presenza: $e');
     }
@@ -419,9 +421,9 @@ class ServizioGruppi {
           .doc(idGruppo)
           .collection('partecipanti')
           .doc(idUtente)
-          .update({
+          .set({
             'statoAudio': FirestoreMapper.dateTimeToTimestamp(stato.aMappa()),
-          });
+          }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Errore aggiornamento stato audio: $e');
     }
@@ -434,10 +436,12 @@ class ServizioGruppi {
           .doc(idGruppo)
           .collection('partecipanti')
           .doc(idUtente)
-          .update({
-            'statoAudio.emergenzaAttiva': true,
-            'statoAudio.ultimoAggiornamento': FieldValue.serverTimestamp(),
-          });
+          .set({
+            'statoAudio': {
+              'emergenzaAttiva': true,
+              'ultimoAggiornamento': FieldValue.serverTimestamp(),
+            }
+          }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Errore attivazione emergenza: $e');
     }
@@ -450,10 +454,12 @@ class ServizioGruppi {
           .doc(idGruppo)
           .collection('partecipanti')
           .doc(idUtente)
-          .update({
-            'statoAudio.emergenzaAttiva': false,
-            'statoAudio.ultimoAggiornamento': FieldValue.serverTimestamp(),
-          });
+          .set({
+            'statoAudio': {
+              'emergenzaAttiva': false,
+              'ultimoAggiornamento': FieldValue.serverTimestamp(),
+            }
+          }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Errore disattivazione emergenza: $e');
     }

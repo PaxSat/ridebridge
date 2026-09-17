@@ -24,6 +24,17 @@ class StatoAudio {
 
   /// Crea un oggetto [StatoAudio] da una mappa Firestore.
   factory StatoAudio.daMappa(Map<String, dynamic> mappa) {
+    DateTime convertiData(dynamic data) {
+      if (data == null) return DateTime.now();
+      if (data is DateTime) return data;
+      // Se è un Timestamp di Firebase
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return StatoAudio(
       connesso: mappa['connesso'] ?? false,
       microfonoAttivo: mappa['microfonoAttivo'] ?? false,
@@ -32,7 +43,7 @@ class StatoAudio {
       prioritaAudio: mappa['prioritaAudio'] ?? false,
       staParlando: mappa['staParlando'] ?? false,
       canaleSpecialeAttivo: mappa['canaleSpecialeAttivo'] ?? false,
-      ultimoAggiornamento: mappa['ultimoAggiornamento'] as DateTime? ?? DateTime.now(),
+      ultimoAggiornamento: convertiData(mappa['ultimoAggiornamento']),
     );
   }
 

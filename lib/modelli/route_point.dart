@@ -24,12 +24,22 @@ class RoutePoint {
 
   /// Crea un oggetto [RoutePoint] da una mappa (es. Firestore).
   factory RoutePoint.daMappa(Map<String, dynamic> mappa, String documentoId) {
+    DateTime convertiData(dynamic data) {
+      if (data == null) return DateTime.now();
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return RoutePoint(
       id: documentoId,
       sequenceId: mappa['sequenceId'] ?? 0,
       latitudine: (mappa['latitudine'] as num).toDouble(),
       longitudine: (mappa['longitudine'] as num).toDouble(),
-      timestamp: mappa['timestamp'] as DateTime? ?? DateTime.now(),
+      timestamp: convertiData(mappa['timestamp']),
       bearing: (mappa['bearing'] as num?)?.toDouble() ?? 0.0,
       distanzaDalPrecedente: (mappa['distanzaDalPrecedente'] as num?)?.toDouble() ?? 0.0,
       distanzaProgressiva: (mappa['distanzaProgressiva'] as num?)?.toDouble() ?? 0.0,

@@ -2,6 +2,7 @@ import 'package:ridebridge/servizi/georef_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import '../servizi/debug_manager.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
@@ -98,6 +99,23 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.myGroups),
+        centerTitle: true,
+        actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(
+                      child: Text(
+                        "[MY_GRPS]",
+                        style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: FutureBuilder<List<Gruppo>>(
         future: _servizioGruppi.mieiGruppi(_uid),

@@ -314,6 +314,12 @@ abstract class AppLocalizations {
   /// **'PARTECIPANTI'**
   String get participants;
 
+  /// No description provided for @participant.
+  ///
+  /// In it, this message translates to:
+  /// **'PARTECIPANTE'**
+  String get participant;
+
   /// No description provided for @loading.
   ///
   /// In it, this message translates to:

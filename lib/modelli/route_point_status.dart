@@ -29,9 +29,18 @@ class RoutePointStatus {
 
   /// Crea un oggetto [RoutePointStatus] da una mappa.
   factory RoutePointStatus.daMappa(Map<String, dynamic> mappa) {
+    DateTime convertiData(dynamic data) {
+      if (data is DateTime) return data;
+      try {
+        return data.toDate();
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     final passaggiMappa = mappa['passaggiUtenti'] as Map<String, dynamic>? ?? {};
     final passaggiConvertiti = passaggiMappa.map(
-      (key, value) => MapEntry(key, value as DateTime),
+      (key, value) => MapEntry(key, convertiData(value)),
     );
 
     return RoutePointStatus(

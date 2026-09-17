@@ -61,9 +61,10 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       listenable: controller,
       builder: (context, _) {
         // Risoluzione pigra dei nomi per il pannello debug
-        for (var uid in controller.snapshotRidersCompleti.keys) {
-          if (!_nomiCache.containsKey(uid)) {
-            _nomiCache[uid] = "..."; // Placeholder caricamento
+        for (var m in controller.tuttiIMembriGruppo) {
+          final uid = m.idUtente;
+          if (!_nomiCache.containsKey(uid) || _nomiCache[uid] == "...") {
+            _nomiCache[uid] = "..."; 
             _servizioDatabase.leggiUtente(uid).then((utente) {
               if (mounted) {
                 setState(() {
@@ -87,6 +88,20 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                 title: Text("📍 ${l10n.caravanStatus}"),
                 centerTitle: true,
                 actions: [
+                  ListenableBuilder(
+                    listenable: DebugManager(),
+                    builder: (context, _) => DebugManager().debugMode 
+                        ? const Padding(
+                            padding: EdgeInsets.only(right: 8.0),
+                            child: Center(
+                              child: Text(
+                                "[CRV_STAT]",
+                                style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                   if (controller.isAttivo)
                     TextButton(
                       onPressed: () => _confermaAbbandona(context, controller),
@@ -323,14 +338,22 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
               leading: CircleAvatar(
                 backgroundColor: avatarColor,
                 child: Icon(
-                  ruolo == RuoloGruppo.leader ? Icons.star : (ruolo == RuoloGruppo.scopa ? Icons.shield : Icons.person),
+                  ruolo == RuoloGruppo.leader ? Icons.star : (ruolo == RuoloGruppo.scopa ? Icons.cleaning_services : Icons.person),
                   color: Colors.white,
                 ),
               ),
-              title: Text(nomeDisplay, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(traccia.length >= 2 
+              title: Text(
+                nomeDisplay, 
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                traccia.length >= 2 
                   ? (avviso?.messaggio ?? msg ?? "In marcia...") 
-                  : "IN ATTESA DI SNAKE"),
+                  : "IN ATTESA DI SNAKE",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -445,7 +468,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                           : _riderSelezionato),
                   items: controller.tuttiIMembriGruppo.map((m) {
                     final uid = m.idUtente;
-                    final ruoloEmoji = m.ruolo == RuoloGruppo.leader ? "👑 " : (m.ruolo == RuoloGruppo.scopa ? "🏍️ " : "");
+                    final ruoloEmoji = m.ruolo == RuoloGruppo.leader ? "👑 " : (m.ruolo == RuoloGruppo.scopa ? "🧹 " : "");
                     final nomeRider = _nomiCache[uid] ?? uid.substring(0, math.min(uid.length, 6));
                     return DropdownMenuItem<String>(
                       value: uid, 

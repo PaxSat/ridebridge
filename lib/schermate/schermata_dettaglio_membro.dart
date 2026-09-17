@@ -6,6 +6,7 @@ import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/servizio_database.dart';
+import '../servizi/debug_manager.dart';
 
 /// Schermata che mostra i dettagli di un singolo membro del gruppo
 /// e permette al Leader di gestirne i ruoli e i permessi.
@@ -32,8 +33,8 @@ class _SchermataDettaglioMembroState extends State<SchermataDettaglioMembro> {
     final l10n = AppLocalizations.of(context)!;
     switch (ruolo) {
       case RuoloGruppo.leader: return "👑 ${l10n.leader}";
-      case RuoloGruppo.scopa: return "🏍️ ${l10n.scopa}";
-      case RuoloGruppo.partecipante: return "👤 ${l10n.participants.substring(0, l10n.participants.length - 1)}";
+      case RuoloGruppo.scopa: return "🧹 ${l10n.scopa}";
+      case RuoloGruppo.partecipante: return "👤 ${l10n.participant}";
     }
   }
 
@@ -70,6 +71,22 @@ class _SchermataDettaglioMembroState extends State<SchermataDettaglioMembro> {
               appBar: AppBar(
                 title: Text(l10n.memberDetail),
                 centerTitle: true,
+                actions: [
+                  ListenableBuilder(
+                    listenable: DebugManager(),
+                    builder: (context, _) => DebugManager().debugMode 
+                        ? const Padding(
+                            padding: EdgeInsets.only(right: 16.0),
+                            child: Center(
+                              child: Text(
+                                "[MBR_DET]",
+                                style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
               ),
               body: SingleChildScrollView(
                 child: Column(
@@ -157,7 +174,7 @@ class _SchermataDettaglioMembroState extends State<SchermataDettaglioMembro> {
                                 const SizedBox(height: 16),
                                 _bottoneAzione(
                                   etichetta: p.ruolo == RuoloGruppo.scopa ? l10n.removeSweeper : l10n.makeSweeper,
-                                  icona: Icons.motorcycle,
+                                  icona: Icons.cleaning_services,
                                   colore: Colors.orange,
                                   onPressed: () => _servizioGruppi.assegnaScopa(widget.idGruppo, mioUid, widget.idUtente),
                                 ),

@@ -36,6 +36,17 @@ class PartecipanteGruppo {
 
   /// Crea un oggetto [PartecipanteGruppo] da una mappa Firestore.
   factory PartecipanteGruppo.daMappa(Map<String, dynamic> mappa, String idUtente) {
+    DateTime? convertiData(dynamic data) {
+      if (data == null) return null;
+      if (data is DateTime) return data;
+      // Se è un Timestamp di Firebase
+      try {
+        return data.toDate();
+      } catch (_) {
+        return null;
+      }
+    }
+
     return PartecipanteGruppo(
       idUtente: idUtente,
       ruolo: RuoloGruppo.values.firstWhere(
@@ -47,7 +58,7 @@ class PartecipanteGruppo {
       emergenzaAbilitata: mappa['emergenzaAbilitata'] ?? true,
       online: mappa['online'] ?? false,
       partecipando: mappa['partecipando'] ?? false,
-      ultimoAccesso: mappa['ultimoAccesso'] as DateTime?,
+      ultimoAccesso: convertiData(mappa['ultimoAccesso']),
       statoAudio: mappa['statoAudio'] != null 
           ? StatoAudio.daMappa(mappa['statoAudio'] as Map<String, dynamic>) 
           : null,

@@ -31,30 +31,57 @@ class SnakeFormationManager {
   static const int _maxBreadcrumbs = 200; // Dimensione massima del diario (circa 15-20 min di guida)
   static const int _aheadConfirmationRequired = 3;
   static const double _aheadHysteresisMeters = 50.0;
-  static const Duration _reliabilityTimeout = Duration(seconds: 30);
 
-  /// Calcola il TailState attuale della carovana basato esclusivamente sulla progressione.
-  TailState calcolaTailState() {
-    if (_progressi.isEmpty) return TailState.iniziale();
+  /// Sincronizza la mappa dei progressi con dati esterni (es. dal Controller).
+  void sincronizzaInteraMappaProgressi(Map<String, RouteProgress> progressiEsterni) {
+    _progressi.clear();
+    _progressi.addAll(progressiEsterni);
+  }
+
+  /// Calcola il TailState attuale della carovana basato sulla progressione di tutti i partecipanti attivi.
+  TailState calcolaTailState(List<String> activeUids) {
+    if (activeUids.isEmpty) return TailState.iniziale();
 
     final ora = DateTime.now();
-    
-    // Identifichiamo i membri affidabili (recenti e con stato valido)
-    final membriAffidabili = _progressi.values.where((p) {
-      final isRecent = ora.difference(p.ultimoAggiornamento) < _reliabilityTimeout;
-      return isRecent && p.engineState != EngineState.invalid && p.lastValidatedIndex != -1;
-    }).toList();
+    int minIndex = 999999;
+    String? tailUid;
 
-    if (membriAffidabili.isEmpty) return TailState.iniziale();
+    for (var uid in activeUids) {
+      final p = _progressi[uid];
 
-    // Il TailState è definito dal membro più arretrato tra quelli affidabili.
-    membriAffidabili.sort((a, b) => a.lastValidatedIndex.compareTo(b.lastValidatedIndex));
-    final peggiore = membriAffidabili.first;
+      // Se non abbiamo dati per un rider attivo, o il rider non ha ancora validato nulla (-1),
+      // la coda è forzata all'inizio (indice 0).
+      if (p == null || p.lastValidatedIndex == -1) {
+        if (0 < minIndex) {
+          minIndex = 0;
+          tailUid = uid;
+        }
+        continue;
+      }
+
+      // Verifichiamo l'affidabilità temporale (opzionale, ma utile per evitare blocchi infiniti
+      // se un rider scompare nel nulla senza uscire formalmente).
+      // Per ora manteniamo una soglia conservativa di 2 minuti.
+      final isStale = ora.difference(p.ultimoAggiornamento) > const Duration(minutes: 2);
+      
+      if (!isStale) {
+        if (p.lastValidatedIndex < minIndex) {
+          minIndex = p.lastValidatedIndex;
+          tailUid = uid;
+        }
+      }
+    }
+
+    // Se non abbiamo trovato nessuno "affidabile", ma ci sono activeUids, 
+    // prudenzialmente restiamo a 0.
+    if (tailUid == null || minIndex == 999999) {
+      return TailState.iniziale();
+    }
 
     return TailState(
-      tailIndex: peggiore.lastValidatedIndex,
-      tailUid: peggiore.uid,
-      isScopaReliable: false,
+      tailIndex: minIndex,
+      tailUid: tailUid,
+      isScopaReliable: false, 
       timestamp: ora,
     );
   }

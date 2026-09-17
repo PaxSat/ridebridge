@@ -1,3 +1,4 @@
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
@@ -24,9 +25,25 @@ class _SchermataHomeState extends State<SchermataHome> {
   final _servizioDatabase = ServizioDatabase();
   final _servizioAuth = ServizioAuth();
   final _firebaseUser = FirebaseAuth.instance.currentUser;
+  String _appVersion = "...";
 
   // Gestione Modalità Debug Centralizzata
   int _clickDebugCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _caricaInfoPacchetto();
+  }
+
+  Future<void> _caricaInfoPacchetto() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = "${packageInfo.version}+${packageInfo.buildNumber}";
+      });
+    }
+  }
 
   void _gestisciClickImmagine() {
     setState(() {
@@ -64,6 +81,15 @@ class _SchermataHomeState extends State<SchermataHome> {
           },
         ),
         actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(child: Text("[HOME]", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))),
+                  )
+                : const SizedBox.shrink(),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: l10n.logoutTooltip,
@@ -200,9 +226,24 @@ class _SchermataHomeState extends State<SchermataHome> {
                   ),
                   const SizedBox(height: 40),
                   const Divider(),
-                  const Text(
-                    "RideBridge v1.0.0 - Step 2 Completo",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ListenableBuilder(
+                    listenable: DebugManager(),
+                    builder: (context, _) => Column(
+                      children: [
+                        Text(
+                          "RideBridge v$_appVersion",
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        if (DebugManager().debugMode)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              "MODALITÀ DEBUG ATTIVA",
+                              style: TextStyle(fontSize: 14, color: Colors.red, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),
