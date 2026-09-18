@@ -154,7 +154,17 @@ class GeoRefController extends ChangeNotifier {
 
     // Sincronizzazione soglie tracciamento
     final config = configurazione ?? _config;
-    _trackManager.aggiornaSoglie(config.snakeDistanceMeters, config.snakeTimeSeconds, config.turnThresholdAngle);
+    _trackManager.aggiornaSoglie(
+      config.snakeDistanceMeters, 
+      config.snakeTimeSeconds, 
+      config.turnThresholdAngle,
+      config.minTurnDistance,
+    );
+    _snakeManager.aggiornaConfigurazione(
+      config.validationRadius,
+      config.offRouteThreshold,
+      config.reliabilityTimeoutSeconds,
+    );
     _leaderEngine.ghostSnake = DebugManager().ghostSnake;
     _leaderEngine.distanzaMassimaGhost = config.distanzaMassimaGhost;
     _sessioneAvviataConPartecipanti = false; 
@@ -633,11 +643,9 @@ class GeoRefController extends ChangeNotifier {
     double dLat = 0.0;
     double dLon = 0.0;
     
-    // Correzione Diagonali: se ci muoviamo in diagonale, dobbiamo usare il seno/coseno di 45 gradi (0.707)
-    // per far sì che lo spostamento totale (l'ipotenusa) sia esattamente pari ai metri scelti.
-    final bool isDiagonal = direzione.length == 2; // NE, NW, SE, SW
-    final double spostamentoEffettivo = isDiagonal ? (metri * 0.7071) : metri;
-    final double offsetGradi = spostamentoEffettivo / 111320.0;
+    // Logica GRID-BASED (Richiesta Step 6): applichiamo i metri integralmente su entrambi gli assi
+    // se ci muoviamo in diagonale (NE = 100m N + 100m E).
+    final double offsetGradi = metri / 111320.0;
 
     if (direzione.contains("N")) dLat = offsetGradi;
     if (direzione.contains("S")) dLat = -offsetGradi;

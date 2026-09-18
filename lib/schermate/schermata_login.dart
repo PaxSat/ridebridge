@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../l10n/app_localizations.dart';
 import '../servizi/servizio_auth.dart';
+import '../servizi/debug_manager.dart';
 import 'schermata_home.dart';
 
 /// Schermata iniziale per l'autenticazione dell'utente.
@@ -131,6 +132,17 @@ class _SchermataLoginState extends State<SchermataLogin> {
       appBar: AppBar(
         title: Text(l10n.appTitle),
         centerTitle: true,
+        actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(child: Text("[LOGIN]", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),

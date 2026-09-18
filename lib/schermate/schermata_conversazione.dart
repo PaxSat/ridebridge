@@ -46,7 +46,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     if (!_geoRefController.isAttivo && _uid != null) {
       _geoRefController.start(
         idGruppo: widget.gruppo.id,
-        mioUid: _uid!,
+        mioUid: _uid,
         mioRuolo: widget.mioRuoloIniziale,
         configurazione: widget.gruppo.configurazione,
       );

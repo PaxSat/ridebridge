@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../servizi/servizio_gruppi.dart';
+import '../servizi/debug_manager.dart';
 
 /// Schermata per la creazione di un nuovo gruppo di motociclisti.
 class SchermataCreaGruppo extends StatefulWidget {
@@ -98,6 +99,17 @@ class _SchermataCreaGruppoState extends State<SchermataCreaGruppo> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.createGroup),
+        actions: [
+          ListenableBuilder(
+            listenable: DebugManager(),
+            builder: (context, _) => DebugManager().debugMode 
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: Center(child: Text("[NEW_GRP]", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),

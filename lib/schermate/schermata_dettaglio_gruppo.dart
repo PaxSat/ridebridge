@@ -267,7 +267,6 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
-                    final dati = snapshot.data!.data() as Map<String, dynamic>;
                     
                     return SizedBox(
                       width: double.infinity,

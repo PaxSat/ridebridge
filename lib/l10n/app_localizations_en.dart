@@ -364,4 +364,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rejoinLeader => 'Navigate to Leader';
+
+  @override
+  String get minTurnDistance => 'Min Turn Distance (m)';
+
+  @override
+  String get validationRadius => 'Point Validation Radius (m)';
+
+  @override
+  String get reliabilityTimeout => 'Reliability Timeout (s)';
+
+  @override
+  String get deepTuning => 'DEEP TUNING (DEBUG ONLY)';
+
+  @override
+  String get geometrySection => 'CARAVAN GEOMETRY';
+
+  @override
+  String get generationSection => 'TRACK GENERATION';
+
+  @override
+  String get navigationSection => 'NAVIGATION AND REJOIN';
 }

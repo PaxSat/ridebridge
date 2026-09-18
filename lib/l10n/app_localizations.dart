@@ -763,6 +763,48 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Naviga verso il Leader'**
   String get rejoinLeader;
+
+  /// No description provided for @minTurnDistance.
+  ///
+  /// In it, this message translates to:
+  /// **'Spostamento Minimo Svolta (m)'**
+  String get minTurnDistance;
+
+  /// No description provided for @validationRadius.
+  ///
+  /// In it, this message translates to:
+  /// **'Raggio Validazione Punto (m)'**
+  String get validationRadius;
+
+  /// No description provided for @reliabilityTimeout.
+  ///
+  /// In it, this message translates to:
+  /// **'Timeout Affidabilità (s)'**
+  String get reliabilityTimeout;
+
+  /// No description provided for @deepTuning.
+  ///
+  /// In it, this message translates to:
+  /// **'DEEP TUNING (SOLO DEBUG)'**
+  String get deepTuning;
+
+  /// No description provided for @geometrySection.
+  ///
+  /// In it, this message translates to:
+  /// **'GEOMETRIA CAROVANA'**
+  String get geometrySection;
+
+  /// No description provided for @generationSection.
+  ///
+  /// In it, this message translates to:
+  /// **'GENERAZIONE TRACCIA'**
+  String get generationSection;
+
+  /// No description provided for @navigationSection.
+  ///
+  /// In it, this message translates to:
+  /// **'NAVIGAZIONE E RIENTRO'**
+  String get navigationSection;
 }
 
 class _AppLocalizationsDelegate

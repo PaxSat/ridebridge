@@ -30,7 +30,7 @@ class SchermataStatoCarovana extends StatefulWidget {
 
 class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   final ServizioDatabase _servizioDatabase = ServizioDatabase();
-  String _riderSelezionato = 'leader';
+  String? _riderSelezionato; // Inizializzato dinamicamente al leader reale
   double _metriSpostamento = 25.0;
 
   // Cache per i nomi dei rider nel pannello debug
@@ -91,6 +91,16 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
           builder: (context, _) {
             final bool debugAttivo = DebugManager().debugMode;
             final bool visibilitaCompleta = widget.mioRuolo == RuoloGruppo.leader || widget.mioRuolo == RuoloGruppo.scopa;
+
+            // FIX: Impostiamo il leader reale come rider selezionato di default nel simulatore
+            if (_riderSelezionato == null && controller.riderPartecipanti.isNotEmpty) {
+              final leader = controller.riderPartecipanti.firstWhereOrNull((p) => p.ruolo == RuoloGruppo.leader);
+              if (leader != null) {
+                _riderSelezionato = leader.idUtente;
+              } else {
+                _riderSelezionato = controller.riderPartecipanti.first.idUtente;
+              }
+            }
 
             return Scaffold(
               appBar: AppBar(
@@ -386,6 +396,20 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                         _rigaDettaglio("Prossimo obiettivo", "${p.nextTargetIndex}"),
                         _rigaDettaglio("Distanza dal prossimo punto", _formattaDistanza(distProssimoPunto)),
                         _rigaDettaglio("Distanza dal Leader", _formattaDistanza(leaderProg - p.routeProgress)),
+                        
+                        // NUOVO: Visualizzazione Coordinate
+                        const Divider(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Lat:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            Text(p.ultimaPosizioneGps.latitudine.toStringAsFixed(6), style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                            const SizedBox(width: 16),
+                            const Text("Lon:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            Text(p.ultimaPosizioneGps.longitudine.toStringAsFixed(6), style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                          ],
+                        ),
+
                         if (p.engineState.name == 'offRoute')
                           const Padding(
                             padding: EdgeInsets.only(top: 8.0),
@@ -475,11 +499,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
               children: [
                 const Text("Rider: "),
                 DropdownButton<String>(
-                  value: controller.tuttiIMembriGruppo.any((m) => m.idUtente == _riderSelezionato) 
-                      ? _riderSelezionato 
-                      : (controller.tuttiIMembriGruppo.isNotEmpty 
-                          ? controller.tuttiIMembriGruppo.first.idUtente 
-                          : _riderSelezionato),
+                  value: _riderSelezionato,
                   items: controller.tuttiIMembriGruppo.map((m) {
                     final uid = m.idUtente;
                     final ruoloEmoji = m.ruolo == RuoloGruppo.leader ? "👑 " : (m.ruolo == RuoloGruppo.scopa ? "🧹 " : "");
@@ -515,11 +535,11 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  onPressed: () => controller.forzaIngressoRider(_riderSelezionato),
+                  onPressed: _riderSelezionato == null ? null : () => controller.forzaIngressoRider(_riderSelezionato!),
                   child: const Text("ENTRA RIDER"),
                 ),
                 ElevatedButton(
-                  onPressed: () => controller.forzaUscitaRider(_riderSelezionato),
+                  onPressed: _riderSelezionato == null ? null : () => controller.forzaUscitaRider(_riderSelezionato!),
                   child: const Text("ESCI RIDER"),
                 ),
               ],
@@ -547,7 +567,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
       height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(padding: EdgeInsets.zero, backgroundColor: Colors.blue.shade100),
-        onPressed: () => controller.muoviRiderFake(_riderSelezionato, dir, _metriSpostamento),
+        onPressed: _riderSelezionato == null ? null : () => controller.muoviRiderFake(_riderSelezionato!, dir, _metriSpostamento),
         child: Text(dir, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
       ),
     );

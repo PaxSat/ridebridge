@@ -151,5 +151,12 @@
       "direction": { "type": "String" }
     }
   },
-  "rejoinLeader": "Navigate to Leader"
+  "rejoinLeader": "Navigate to Leader",
+  "minTurnDistance": "Min Turn Distance (m)",
+  "validationRadius": "Point Validation Radius (m)",
+  "reliabilityTimeout": "Reliability Timeout (s)",
+  "deepTuning": "DEEP TUNING (DEBUG ONLY)",
+  "geometrySection": "CARAVAN GEOMETRY",
+  "generationSection": "TRACK GENERATION",
+  "navigationSection": "NAVIGATION AND REJOIN"
 }

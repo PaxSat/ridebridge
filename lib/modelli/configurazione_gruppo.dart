@@ -8,6 +8,9 @@ class ConfigurazioneGruppo {
   final double snakeDistanceMeters; // Distanza minima tra punti Snake
   final double snakeTimeSeconds; // Tempo minimo tra punti Snake
   final double distanzaMassimaGhost; // Lunghezza massima dello Snake in modalità Ghost
+  final double minTurnDistance; // Distanza minima per triggerare una svolta
+  final double validationRadius; // Raggio di aggancio ai punti dello Snake
+  final double reliabilityTimeoutSeconds; // Tempo dopo il quale un rider è considerato offline
 
   ConfigurazioneGruppo({
     this.turnThresholdAngle = 35.0,
@@ -18,6 +21,9 @@ class ConfigurazioneGruppo {
     this.snakeDistanceMeters = 50.0,
     this.snakeTimeSeconds = 15.0,
     this.distanzaMassimaGhost = 15000.0,
+    this.minTurnDistance = 15.0,
+    this.validationRadius = 35.0,
+    this.reliabilityTimeoutSeconds = 30.0,
   });
 
   /// Preset per carovana turistica (Bilanciato).
@@ -56,6 +62,9 @@ class ConfigurazioneGruppo {
       snakeDistanceMeters: (mappa['snakeDistanceMeters'] as num?)?.toDouble() ?? 50.0,
       snakeTimeSeconds: (mappa['snakeTimeSeconds'] as num?)?.toDouble() ?? 15.0,
       distanzaMassimaGhost: (mappa['distanzaMassimaGhost'] as num?)?.toDouble() ?? 15000.0,
+      minTurnDistance: (mappa['minTurnDistance'] as num?)?.toDouble() ?? 15.0,
+      validationRadius: (mappa['validationRadius'] as num?)?.toDouble() ?? 35.0,
+      reliabilityTimeoutSeconds: (mappa['reliabilityTimeoutSeconds'] as num?)?.toDouble() ?? 30.0,
     );
   }
 
@@ -70,6 +79,9 @@ class ConfigurazioneGruppo {
       'snakeDistanceMeters': snakeDistanceMeters,
       'snakeTimeSeconds': snakeTimeSeconds,
       'distanzaMassimaGhost': distanzaMassimaGhost,
+      'minTurnDistance': minTurnDistance,
+      'validationRadius': validationRadius,
+      'reliabilityTimeoutSeconds': reliabilityTimeoutSeconds,
     };
   }
 
@@ -83,6 +95,9 @@ class ConfigurazioneGruppo {
     double? snakeDistanceMeters,
     double? snakeTimeSeconds,
     double? distanzaMassimaGhost,
+    double? minTurnDistance,
+    double? validationRadius,
+    double? reliabilityTimeoutSeconds,
   }) {
     return ConfigurazioneGruppo(
       turnThresholdAngle: turnThresholdAngle ?? this.turnThresholdAngle,
@@ -93,6 +108,9 @@ class ConfigurazioneGruppo {
       snakeDistanceMeters: snakeDistanceMeters ?? this.snakeDistanceMeters,
       snakeTimeSeconds: snakeTimeSeconds ?? this.snakeTimeSeconds,
       distanzaMassimaGhost: distanzaMassimaGhost ?? this.distanzaMassimaGhost,
+      minTurnDistance: minTurnDistance ?? this.minTurnDistance,
+      validationRadius: validationRadius ?? this.validationRadius,
+      reliabilityTimeoutSeconds: reliabilityTimeoutSeconds ?? this.reliabilityTimeoutSeconds,
     );
   }
 }

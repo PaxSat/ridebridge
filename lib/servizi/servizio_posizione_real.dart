@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/partecipante_gruppo.dart';
-import 'servizio_gruppi.dart';
 import 'firestore_mapper.dart';
 import 'firebase_georef_transport.dart';
 

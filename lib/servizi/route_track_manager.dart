@@ -15,18 +15,21 @@ class RouteTrackManager {
   double sogliaDistanzaMeters;
   Duration sogliaTempo;
   double sogliaSvoltaGradi;
+  double minTurnDistance;
 
   RouteTrackManager({
     this.sogliaDistanzaMeters = 50.0,
     this.sogliaTempo = const Duration(seconds: 15),
     this.sogliaSvoltaGradi = 20.0,
+    this.minTurnDistance = 15.0,
   });
 
   /// Aggiorna le soglie operative dalla configurazione del gruppo.
-  void aggiornaSoglie(double distanza, double secondi, double gradi) {
+  void aggiornaSoglie(double distanza, double secondi, double gradi, double minTurnDist) {
     sogliaDistanzaMeters = distanza;
     sogliaTempo = Duration(seconds: secondi.round());
     sogliaSvoltaGradi = gradi;
+    minTurnDistance = minTurnDist;
   }
 
   /// Pulisce l'intera traccia corrente.
@@ -85,8 +88,8 @@ class RouteTrackManager {
     if (diffBearing > 180) diffBearing = 360 - diffBearing;
 
     // CONDIZIONI DI TRIGGER
-    // 1. Svolta: se l'angolo cambia sensibilmente e ci siamo mossi almeno un po' (min 15m per evitare rumore GPS)
-    bool triggerTurn = diffBearing >= sogliaSvoltaGradi && distanza >= 15.0;
+    // 1. Svolta: se l'angolo cambia sensibilmente e ci siamo mossi almeno un po'
+    bool triggerTurn = diffBearing >= sogliaSvoltaGradi && distanza >= minTurnDistance;
     
     // 2. Distanza e Tempo (AND logic tradizionale)
     final sogliaDistanzaEffettiva = ignoreTimeThreshold ? 24.0 : sogliaDistanzaMeters;

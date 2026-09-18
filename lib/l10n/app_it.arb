@@ -151,5 +151,12 @@
       "direction": { "type": "String" }
     }
   },
-  "rejoinLeader": "Naviga verso il Leader"
+  "rejoinLeader": "Naviga verso il Leader",
+  "minTurnDistance": "Spostamento Minimo Svolta (m)",
+  "validationRadius": "Raggio Validazione Punto (m)",
+  "reliabilityTimeout": "Timeout Affidabilità (s)",
+  "deepTuning": "DEEP TUNING (SOLO DEBUG)",
+  "geometrySection": "GEOMETRIA CAROVANA",
+  "generationSection": "GENERAZIONE TRACCIA",
+  "navigationSection": "NAVIGAZIONE E RIENTRO"
 }

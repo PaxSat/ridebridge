@@ -365,4 +365,25 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get rejoinLeader => 'Naviga verso il Leader';
+
+  @override
+  String get minTurnDistance => 'Spostamento Minimo Svolta (m)';
+
+  @override
+  String get validationRadius => 'Raggio Validazione Punto (m)';
+
+  @override
+  String get reliabilityTimeout => 'Timeout Affidabilità (s)';
+
+  @override
+  String get deepTuning => 'DEEP TUNING (SOLO DEBUG)';
+
+  @override
+  String get geometrySection => 'GEOMETRIA CAROVANA';
+
+  @override
+  String get generationSection => 'GENERAZIONE TRACCIA';
+
+  @override
+  String get navigationSection => 'NAVIGAZIONE E RIENTRO';
 }

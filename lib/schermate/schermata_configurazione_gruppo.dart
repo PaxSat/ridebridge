@@ -26,6 +26,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
   late TextEditingController _distanzaMassimaScopa;
   late TextEditingController _distanzaMassimaGhost;
   late TextEditingController _offRouteThreshold;
+  late TextEditingController _minTurnDistance;
+  late TextEditingController _validationRadius;
+  late TextEditingController _reliabilityTimeoutSeconds;
 
   bool _inCaricamento = false;
 
@@ -39,6 +42,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _distanzaMassimaScopa = TextEditingController(text: c.distanzaMassimaScopa.toString());
     _distanzaMassimaGhost = TextEditingController(text: c.distanzaMassimaGhost.toString());
     _offRouteThreshold = TextEditingController(text: c.offRouteThreshold.toString());
+    _minTurnDistance = TextEditingController(text: c.minTurnDistance.toString());
+    _validationRadius = TextEditingController(text: c.validationRadius.toString());
+    _reliabilityTimeoutSeconds = TextEditingController(text: c.reliabilityTimeoutSeconds.toString());
   }
 
   @override
@@ -49,6 +55,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _distanzaMassimaScopa.dispose();
     _distanzaMassimaGhost.dispose();
     _offRouteThreshold.dispose();
+    _minTurnDistance.dispose();
+    _validationRadius.dispose();
+    _reliabilityTimeoutSeconds.dispose();
     super.dispose();
   }
 
@@ -65,6 +74,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
         distanzaMassimaScopa: double.parse(_distanzaMassimaScopa.text),
         distanzaMassimaGhost: double.parse(_distanzaMassimaGhost.text),
         offRouteThreshold: double.parse(_offRouteThreshold.text),
+        minTurnDistance: double.parse(_minTurnDistance.text),
+        validationRadius: double.parse(_validationRadius.text),
+        reliabilityTimeoutSeconds: double.parse(_reliabilityTimeoutSeconds.text),
       );
 
       await _servizioGruppi.salvaConfigurazione(widget.gruppo.id, nuovaConfig);
@@ -88,6 +100,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
       _distanzaMassimaScopa.text = preset.distanzaMassimaScopa.toString();
       _distanzaMassimaGhost.text = preset.distanzaMassimaGhost.toString();
       _offRouteThreshold.text = preset.offRouteThreshold.toString();
+      _minTurnDistance.text = preset.minTurnDistance.toString();
+      _validationRadius.text = preset.validationRadius.toString();
+      _reliabilityTimeoutSeconds.text = preset.reliabilityTimeoutSeconds.toString();
     });
   }
 
@@ -131,8 +146,27 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
               const SizedBox(height: 32),
               const Divider(),
               const SizedBox(height: 16),
-              Text(l10n.navParameters, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
-              const SizedBox(height: 16),
+              
+              // SEZIONE: GEOMETRIA CAROVANA
+              _sezioneTitolo(l10n.geometrySection),
+              _campoNumerico(
+                controller: _distanzaMassimaGruppo,
+                etichetta: l10n.maxGroupDistance,
+                suggerimento: "es. 500.0",
+              ),
+              _campoNumerico(
+                controller: _distanzaMassimaGhost,
+                etichetta: l10n.maxGhostDistance,
+                suggerimento: "es. 15000.0",
+              ),
+              _campoNumerico(
+                controller: _distanzaMassimaScopa,
+                etichetta: l10n.maxSweeperDistance,
+                suggerimento: "es. 1000.0",
+              ),
+
+              // SEZIONE: GENERAZIONE TRACCIA
+              _sezioneTitolo(l10n.generationSection),
               _campoNumerico(
                 controller: _turnThresholdAngle,
                 etichetta: l10n.turnAngle,
@@ -141,31 +175,46 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
               _campoNumerico(
                 controller: _triggerDistanceMeters,
                 etichetta: l10n.waypointDistance,
-                suggerimento: "es. 10.0",
+                suggerimento: "es. 50.0",
               ),
-              const SizedBox(height: 32),
-              Text(l10n.convoyThresholds, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
-              const SizedBox(height: 16),
-              _campoNumerico(
-                controller: _distanzaMassimaGruppo,
-                etichetta: l10n.maxGroupDistance,
-                suggerimento: "es. 500.0",
-              ),
-              _campoNumerico(
-                controller: _distanzaMassimaScopa,
-                etichetta: l10n.maxSweeperDistance,
-                suggerimento: "es. 1000.0",
-              ),
-              _campoNumerico(
-                controller: _distanzaMassimaGhost,
-                etichetta: l10n.maxGhostDistance,
-                suggerimento: "es. 15000.0",
-              ),
+
+              // SEZIONE: NAVIGAZIONE E RIENTRO
+              _sezioneTitolo(l10n.navigationSection),
               _campoNumerico(
                 controller: _offRouteThreshold,
                 etichetta: l10n.offRouteThreshold,
-                suggerimento: "es. 50.0",
+                suggerimento: "es. 150.0",
               ),
+
+              // SEZIONE: DEEP TUNING (SOLO DEBUG)
+              ListenableBuilder(
+                listenable: DebugManager(),
+                builder: (context, _) {
+                  if (!DebugManager().debugMode) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sezioneTitolo(l10n.deepTuning, color: Colors.red),
+                      _campoNumerico(
+                        controller: _minTurnDistance,
+                        etichetta: l10n.minTurnDistance,
+                        suggerimento: "es. 15.0",
+                      ),
+                      _campoNumerico(
+                        controller: _validationRadius,
+                        etichetta: l10n.validationRadius,
+                        suggerimento: "es. 35.0",
+                      ),
+                      _campoNumerico(
+                        controller: _reliabilityTimeoutSeconds,
+                        etichetta: l10n.reliabilityTimeout,
+                        suggerimento: "es. 30.0",
+                      ),
+                    ],
+                  );
+                },
+              ),
+
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,
@@ -212,6 +261,16 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
           if (double.tryParse(value) == null) return l10n.invalidNumber;
           return null;
         },
+      ),
+    );
+  }
+
+  Widget _sezioneTitolo(String titolo, {Color color = Colors.orange}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 16),
+      child: Text(
+        titolo, 
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)
       ),
     );
   }

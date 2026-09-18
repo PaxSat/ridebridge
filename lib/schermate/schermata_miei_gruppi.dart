@@ -92,7 +92,7 @@ class _SchermataMieiGruppiState extends State<SchermataMieiGruppi> {
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _servizioGruppi.mieiGruppiConRuolo(_uid!),
+        future: _servizioGruppi.mieiGruppiConRuolo(_uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

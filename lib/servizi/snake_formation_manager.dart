@@ -24,13 +24,21 @@ class SnakeFormationManager {
   // Parametri di configurazione
   static const int _lookAheadWindow = 3; // Finestra stretta per progressione sequenziale
   static const int _recoveryWindow = 20; // Finestra ampia per rientro da zone ombra
-  static const double _validationRadius = 35.0; // Raggio per validare il passaggio
+  double _validationRadius = 35.0; // Raggio per validare il passaggio
   static const double _maxBearingDifference = 60.0; // Tolleranza direzione per snapping (tornanti)
-  static const double _offRouteThreshold = 150.0;
+  double _offRouteThreshold = 150.0;
   static const int _maxConsecutiveMisses = 5; // N. campionamenti prima di OFF_ROUTE
   static const int _maxBreadcrumbs = 200; // Dimensione massima del diario (circa 15-20 min di guida)
   static const int _aheadConfirmationRequired = 3;
   static const double _aheadHysteresisMeters = 50.0;
+  Duration _reliabilityTimeout = const Duration(seconds: 30);
+
+  /// Aggiorna i parametri tecnici dalla configurazione del gruppo.
+  void aggiornaConfigurazione(double radius, double offRoute, double timeoutSeconds) {
+    _validationRadius = radius;
+    _offRouteThreshold = offRoute;
+    _reliabilityTimeout = Duration(seconds: timeoutSeconds.round());
+  }
 
   /// Sincronizza la mappa dei progressi con dati esterni (es. dal Controller).
   void sincronizzaInteraMappaProgressi(Map<String, RouteProgress> progressiEsterni) {
@@ -59,10 +67,9 @@ class SnakeFormationManager {
         continue;
       }
 
-      // Verifichiamo l'affidabilità temporale (opzionale, ma utile per evitare blocchi infiniti
+      // Verifichiamo l'affidabilità temporale (per evitare blocchi infiniti
       // se un rider scompare nel nulla senza uscire formalmente).
-      // Per ora manteniamo una soglia conservativa di 2 minuti.
-      final isStale = ora.difference(p.ultimoAggiornamento) > const Duration(minutes: 2);
+      final isStale = ora.difference(p.ultimoAggiornamento) > _reliabilityTimeout;
       
       if (!isStale) {
         if (p.lastValidatedIndex < minIndex) {
