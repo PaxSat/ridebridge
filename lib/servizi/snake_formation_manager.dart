@@ -56,10 +56,15 @@ class SnakeFormationManager {
 
     for (var uid in activeUids) {
       final p = _progressi[uid];
+      if (p == null) continue;
 
-      // Se non abbiamo dati per un rider attivo, o il rider non ha ancora validato nulla (-1),
-      // la coda è forzata all'inizio (indice 0).
-      if (p == null || p.lastValidatedIndex == -1) {
+      // Verifichiamo l'affidabilità temporale (per evitare blocchi infiniti
+      // se un rider scompare nel nulla senza uscire formalmente).
+      final isStale = ora.difference(p.ultimoAggiornamento) > _reliabilityTimeout;
+      if (isStale) continue;
+
+      // Se il rider non ha ancora validato nulla (-1), la coda è forzata all'inizio (indice 0).
+      if (p.lastValidatedIndex == -1) {
         if (0 < minIndex) {
           minIndex = 0;
           tailUid = uid;
@@ -67,15 +72,9 @@ class SnakeFormationManager {
         continue;
       }
 
-      // Verifichiamo l'affidabilità temporale (per evitare blocchi infiniti
-      // se un rider scompare nel nulla senza uscire formalmente).
-      final isStale = ora.difference(p.ultimoAggiornamento) > _reliabilityTimeout;
-      
-      if (!isStale) {
-        if (p.lastValidatedIndex < minIndex) {
-          minIndex = p.lastValidatedIndex;
-          tailUid = uid;
-        }
+      if (p.lastValidatedIndex < minIndex) {
+        minIndex = p.lastValidatedIndex;
+        tailUid = uid;
       }
     }
 

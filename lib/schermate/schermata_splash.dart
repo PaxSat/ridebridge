@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'schermata_login.dart';
+import 'schermata_home.dart';
 
 /// Schermata di Splash personalizzata che mostra l'immagine del brand.
 class SchermataSplash extends StatefulWidget {
@@ -14,12 +16,18 @@ class _SchermataSplashState extends State<SchermataSplash> {
   @override
   void initState() {
     super.initState();
-    // Avvia il timer di 5 secondi per il passaggio al Login
-    Timer(const Duration(seconds: 5), () {
+    // Verifica l'autenticazione persistente dopo il timer di splash
+    Timer(const Duration(seconds: 3), () {
       if (mounted) {
+        final user = FirebaseAuth.instance.currentUser;
+        
+        Widget nextScreen = (user != null) 
+            ? const SchermataHome() 
+            : const SchermataLogin();
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const SchermataLogin()),
+          MaterialPageRoute(builder: (context) => nextScreen),
         );
       }
     });

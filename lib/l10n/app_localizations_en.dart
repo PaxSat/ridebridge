@@ -378,6 +378,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reliabilityTimeout => 'Reliability Timeout (s)';
 
   @override
+  String get bufferSize => 'Analysis Buffer Size (points)';
+
+  @override
+  String get samplingInterval => 'Sampling Interval (m)';
+
+  @override
+  String get straightDistance => 'Straight Line Distance (m)';
+
+  @override
   String get deepTuning => 'DEEP TUNING (DEBUG ONLY)';
 
   @override

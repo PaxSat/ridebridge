@@ -788,6 +788,24 @@ abstract class AppLocalizations {
   /// **'Timeout Affidabilità (s)'**
   String get reliabilityTimeout;
 
+  /// No description provided for @bufferSize.
+  ///
+  /// In it, this message translates to:
+  /// **'Dimensione Buffer Analisi (punti)'**
+  String get bufferSize;
+
+  /// No description provided for @samplingInterval.
+  ///
+  /// In it, this message translates to:
+  /// **'Intervallo Campionamento (m)'**
+  String get samplingInterval;
+
+  /// No description provided for @straightDistance.
+  ///
+  /// In it, this message translates to:
+  /// **'Distanza Rettilineo (m)'**
+  String get straightDistance;
+
   /// No description provided for @deepTuning.
   ///
   /// In it, this message translates to:

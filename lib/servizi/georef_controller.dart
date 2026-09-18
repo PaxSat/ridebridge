@@ -153,10 +153,13 @@ class GeoRefController extends ChangeNotifier {
     // Sincronizzazione soglie tracciamento
     final config = configurazione ?? _config;
     _trackManager.aggiornaSoglie(
-      config.snakeDistanceMeters, 
-      config.snakeTimeSeconds, 
-      config.turnThresholdAngle,
-      config.minTurnDistance,
+      distanza: config.snakeDistanceMeters, 
+      secondi: config.snakeTimeSeconds, 
+      gradi: config.turnThresholdAngle,
+      minTurnDist: config.minTurnDistance,
+      bSize: config.bufferSize,
+      sInterval: config.samplingInterval,
+      sDist: config.straightDistance,
     );
     _snakeManager.aggiornaConfigurazione(
       config.validationRadius,

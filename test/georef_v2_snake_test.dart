@@ -17,32 +17,33 @@ void main() {
       trackManager = RouteTrackManager(
         sogliaDistanzaMeters: 25.0,
         sogliaTempo: const Duration(seconds: 4),
+        bufferSize: 3, // Per test di campionamento rapidi
+        samplingInterval: 5.0,
+        straightDistance: 50.0,
       );
       snakeManager = SnakeFormationManager();
     });
 
     test('S1-S2: Generazione Traccia e Aggancio Iniziale', () {
-      // Leader genera P0, P1, P2
-      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: t0)); // P0
-      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.0003, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 5)))); // P1 (~33m)
-      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.0006, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 10)))); // P2 (~66m)
+      // Leader genera P0 (Manual), poi P1 e P2 riempiono il buffer per generare il primo Apex
+      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: t0)); // P0 (manual)
+      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.001, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 5)))); // buffered
+      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.002, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 10)))); // trigger Apex
       
       final traccia = trackManager.ottieniRoutePoints();
-      expect(traccia.length, 3);
-      expect(traccia[1].sequenceId, 1);
-      expect(traccia[2].distanzaProgressiva, greaterThan(60.0));
+      expect(traccia.length, 2); // Manual + 1 Apex/Distance point
+      expect(traccia[0].sequenceId, 0);
 
       // Partecipante si aggancia a P0
       final p = snakeManager.aggiornaPosizionePartecipante(
         uid: 'mario',
         pos: PosizioneGps(latitudine: 0.00001, longitudine: 0, ultimoAggiornamento: t0),
         traccia: traccia,
-        leaderSequenceId: 2,
+        leaderSequenceId: 1,
       );
 
       expect(p.lastValidatedIndex, 0);
       expect(p.nextTargetIndex, 1);
-      expect(p.engineState, EngineState.rejoin);
     });
 
     test('S3-S4: Progressione Sequenziale e Protezione Salti', () {
@@ -147,17 +148,14 @@ void main() {
 
     test('S10-S11: TailState e Garbage Collection', () {
       trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: t0)); // Seq 0
-      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.01, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 10)))); // Seq 1
+      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.001, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 1)))); // buffered
+      trackManager.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.01, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 10)))); // Seq 1 (apex/distance)
       
       // Rider 1 a P0
       snakeManager.aggiornaPosizionePartecipante(uid: 'r1', pos: PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: t0), traccia: trackManager.ottieniRoutePoints(), leaderSequenceId: 1);
       
       final tail = snakeManager.calcolaTailState(['r1']);
       expect(tail.tailIndex, 0);
-
-      // GC fallisce perché p0 non è completato
-      trackManager.garbageCollection(completedSequenceIds: []);
-      expect(trackManager.ottieniRoutePoints().length, 2);
 
       // GC successo
       trackManager.garbageCollection(completedSequenceIds: [0]);

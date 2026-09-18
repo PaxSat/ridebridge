@@ -14,6 +14,8 @@ void main() {
       track = RouteTrackManager(
         sogliaDistanzaMeters: 25.0,
         sogliaTempo: const Duration(seconds: 4),
+        bufferSize: 3,
+        straightDistance: 50.0,
       );
       snake = SnakeFormationManager();
     });
@@ -37,6 +39,13 @@ void main() {
       final t0 = DateTime.now();
       track.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: t0));
       
+      // Riempiamo il buffer (size 3)
+      track.aggiungiPosizioneLeader(PosizioneGps(
+        latitudine: 0.0005, // ~55m
+        longitudine: 0, 
+        ultimoAggiornamento: t0.add(const Duration(seconds: 5)),
+      ));
+
       final p1 = track.aggiungiPosizioneLeader(PosizioneGps(
         latitudine: 0.001, // ~111m
         longitudine: 0, 
@@ -66,6 +75,9 @@ void main() {
     test('6-7. Garbage Collection basata su transito topologico', () {
       final t0 = DateTime.now();
       final p0 = track.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0, longitudine: 0, ultimoAggiornamento: t0))!;
+      
+      // Riempiamo il buffer per p1
+      track.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.0005, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 5))));
       final p1 = track.aggiungiPosizioneLeader(PosizioneGps(latitudine: 0.001, longitudine: 0, ultimoAggiornamento: t0.add(const Duration(seconds: 10))))!;
 
       // GC con p0 non completato (basato su sequenceId)

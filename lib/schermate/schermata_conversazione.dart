@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../l10n/app_localizations.dart';
 import '../modelli/gruppo.dart';
 import '../modelli/partecipante_gruppo.dart';
@@ -52,10 +53,16 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
         configurazione: widget.gruppo.configurazione,
       );
     }
+
+    // Attiva modalità Immersiva (Full Screen) per la guida
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   @override
   void dispose() {
+    // Ripristina le barre di sistema all'uscita
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
     if (_uid != null) {
       _servizioGruppi.aggiornaPresenza(widget.gruppo.id, _uid, false);
     }
@@ -93,8 +100,9 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final String currentUid = _uid ?? "";
+    final orientation = MediaQuery.of(context).orientation;
+    final bool isLandscape = orientation == Orientation.landscape;
 
     return ListenableBuilder(
       listenable: _geoRefController,
@@ -120,10 +128,23 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
             if (context.mounted) Navigator.of(context).pop();
           },
           child: Scaffold(
-            appBar: AppBar(
-              title: Text(widget.gruppo.nome),
-              centerTitle: true,
+            appBar: isLandscape ? null : AppBar(
               automaticallyImplyLeading: false,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.gruppo.nome.toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ],
+              ),
               actions: [
                 ListenableBuilder(
                   listenable: DebugManager(),
@@ -141,107 +162,180 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                 ),
               ],
             ),
-            body: ListView(
-              padding: const EdgeInsets.only(bottom: 32),
-              children: [
-                _costruisciHeaderControlli(currentUid),
-                _costruisciSezioneParlante(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
+            body: SafeArea(
+              child: isLandscape 
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.people, size: 20, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(l10n.participantsLive, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                      // SINISTRA: Dashboard e Istruzioni
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.all(12),
+                          children: [
+                            // Tag Nome Gruppo (Sostituisce AppBar in landscape)
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    widget.gruppo.nome.toUpperCase(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (DebugManager().debugMode)
+                                  const Text("[CONV_LIVE]", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            _costruisciSezioneParlante(isLandscape: true),
+                            const SizedBox(height: 16),
+                            _costruisciListaMembriHeader(),
+                            _costruisciListaPartecipanti(partecipantiAttivi),
+                          ],
+                        ),
+                      ),
+                      // DESTRA: Pulsantiera Operativa in Colonna Singola
+                      Container(
+                        width: 90, 
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade900,
+                          border: const Border(left: BorderSide(color: Colors.white10)),
+                        ),
+                        child: _costruisciGrigliaControlli(currentUid, isLandscape: true),
+                      ),
+                    ],
+                  )
+                : ListView(
+                    padding: const EdgeInsets.only(bottom: 32),
+                    children: [
+                      _costruisciHeaderControlli(currentUid),
+                      _costruisciSezioneParlante(isLandscape: false),
+                      _costruisciListaMembriHeader(),
+                      _costruisciListaPartecipanti(partecipantiAttivi),
                     ],
                   ),
-                ),
-                _costruisciListaPartecipanti(partecipantiAttivi),
-              ],
             ),
           ),
         );
-      }
+      },
+    );
+  }
+
+  Widget _costruisciListaMembriHeader() {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.people, size: 20, color: Colors.grey),
+          const SizedBox(width: 8),
+          Text(l10n.participantsLive, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+        ],
+      ),
     );
   }
 
   Widget _costruisciHeaderControlli(String currentUid) {
-    final l10n = AppLocalizations.of(context)!;
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.grey.shade900,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          if (widget.mioRuoloIniziale == RuoloGruppo.leader)
-            _bottoneCircolare(
-              icona: Icons.cleaning_services,
-              etichetta: l10n.scopa,
-              colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
-              onTap: _gestisciCanaleSpeciale,
-            ),
-          if (widget.mioRuoloIniziale == RuoloGruppo.scopa)
-            _bottoneCircolare(
-              icona: Icons.podcasts,
-              etichetta: l10n.leader,
-              colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
-              onTap: _gestisciCanaleSpeciale,
-            ),
+      child: _costruisciGrigliaControlli(currentUid, isLandscape: false),
+    );
+  }
 
-          if (widget.mioRuoloIniziale == RuoloGruppo.leader)
-            ListenableBuilder(
-              listenable: _geoRefController,
-              builder: (context, _) => _bottoneCircolare(
-                icona: Icons.visibility_off,
-                etichetta: "GHOST",
-                colore: DebugManager().ghostSnake ? Colors.deepPurple : Colors.white24,
-                onTap: () {
-                  _geoRefController.impostaGhostSnake(!DebugManager().ghostSnake);
-                },
+  Widget _costruisciGrigliaControlli(String currentUid, {required bool isLandscape}) {
+    final l10n = AppLocalizations.of(context)!;
+    
+    final buttons = [
+      if (widget.mioRuoloIniziale == RuoloGruppo.leader)
+        _bottoneCircolare(
+          icona: Icons.cleaning_services,
+          etichetta: l10n.scopa,
+          colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
+          onTap: _gestisciCanaleSpeciale,
+          isLandscape: isLandscape,
+        ),
+      if (widget.mioRuoloIniziale == RuoloGruppo.scopa)
+        _bottoneCircolare(
+          icona: Icons.podcasts,
+          etichetta: l10n.leader,
+          colore: _canaleSpecialeAttivo ? Colors.red : Colors.grey,
+          onTap: _gestisciCanaleSpeciale,
+          isLandscape: isLandscape,
+        ),
+
+      if (widget.mioRuoloIniziale == RuoloGruppo.leader)
+        ListenableBuilder(
+          listenable: _geoRefController,
+          builder: (context, _) => _bottoneCircolare(
+            icona: Icons.visibility_off,
+            etichetta: "GHOST",
+            colore: DebugManager().ghostSnake ? Colors.deepPurple : Colors.white24,
+            onTap: () {
+              _geoRefController.impostaGhostSnake(!DebugManager().ghostSnake);
+            },
+            isLandscape: isLandscape,
+          ),
+        ),
+
+      _bottoneCircolare(
+        icona: Icons.location_on,
+        etichetta: "CAROVANA",
+        colore: Colors.orange,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SchermataStatoCarovana(
+                mioRuolo: widget.mioRuoloIniziale,
+                mioUid: currentUid,
+                idGruppo: widget.gruppo.id,
               ),
             ),
-
-          _bottoneCircolare(
-            icona: Icons.location_on,
-            etichetta: "CAROVANA",
-            colore: Colors.orange,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SchermataStatoCarovana(
-                    mioRuolo: widget.mioRuoloIniziale,
-                    mioUid: currentUid,
-                    idGruppo: widget.gruppo.id,
-                  ),
-                ),
-              );
-            },
-          ),
-
-          _bottoneCircolare(
-            icona: Icons.warning_amber_rounded,
-            etichetta: l10n.sos,
-            colore: _sosAttivo ? Colors.red : Colors.grey,
-            onTap: _gestisciSos,
-          ),
-
-          _bottoneCircolare(
-            icona: Icons.close,
-            etichetta: l10n.exit,
-            colore: Colors.white24,
-            onTap: () async {
-              await _geoRefController.stop();
-              if (!mounted) return;
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
+          );
+        },
+        isLandscape: isLandscape,
       ),
+
+      _bottoneCircolare(
+        icona: Icons.warning_amber_rounded,
+        etichetta: l10n.sos,
+        colore: _sosAttivo ? Colors.red : Colors.grey,
+        onTap: _gestisciSos,
+        isLandscape: isLandscape,
+      ),
+
+      _bottoneCircolare(
+        icona: Icons.close,
+        etichetta: l10n.exit,
+        colore: Colors.white24,
+        onTap: () async {
+          await _geoRefController.stop();
+          if (!mounted) return;
+          Navigator.of(context).pop();
+        },
+        isLandscape: isLandscape,
+      ),
+    ];
+
+    if (isLandscape) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: buttons,
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: buttons,
     );
   }
 
@@ -250,25 +344,43 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     required String etichetta,
     required Color colore,
     required VoidCallback onTap,
+    required bool isLandscape,
   }) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: colore, shape: BoxShape.circle),
-            child: Icon(icona, color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(etichetta, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: isLandscape ? 4.0 : 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(isLandscape ? 10 : 15),
+              decoration: BoxDecoration(
+                color: colore, 
+                shape: BoxShape.circle,
+                boxShadow: isLandscape ? [BoxShadow(color: Colors.black26, blurRadius: 4, offset: const Offset(0, 2))] : null,
+              ),
+              child: Icon(icona, color: Colors.white, size: isLandscape ? 22 : 28),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              etichetta.toUpperCase(), 
+              style: TextStyle(
+                color: Colors.white, 
+                fontSize: isLandscape ? 9 : 12, 
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              )
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _costruisciSezioneParlante() {
+  Widget _costruisciSezioneParlante({required bool isLandscape}) {
     final l10n = AppLocalizations.of(context)!;
     final String currentUid = _uid ?? "";
 
@@ -336,11 +448,11 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
         }
 
         final bool exceedsThreshold = relativeAngle.abs() >= widget.gruppo.configurazione.turnThresholdAngle;
-        final bool isLeader = widget.mioRuoloIniziale == RuoloGruppo.leader;
+        final bool eLeader = widget.mioRuoloIniziale == RuoloGruppo.leader;
 
         return Container(
           margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          padding: EdgeInsets.symmetric(vertical: isLandscape ? 8 : 12, horizontal: 16),
           width: double.infinity,
           decoration: BoxDecoration(
             color: _sosAttivo ? Colors.red.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
@@ -348,6 +460,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
             border: Border.all(color: _sosAttivo ? Colors.red : Colors.orange.withValues(alpha: 0.3)),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               // RIGA 1: RIEPILOGO GENERALE
               Row(
@@ -362,36 +475,40 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                   _datoSintetico(Icons.turn_right, "$nSvolte"),
                 ],
               ),
-              const Divider(height: 20),
+              const Divider(height: 16),
               
-              Text(
-                _sosAttivo ? l10n.sosActive : l10n.speaking,
-                style: TextStyle(
-                  fontSize: 10, 
-                  fontWeight: FontWeight.bold, 
-                  color: _sosAttivo ? Colors.red : Colors.orange
-                )
-              ),
-              Text(
-                _sosAttivo ? l10n.assistanceRequested : l10n.none,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Divider(height: 20),
+              if (!eLeader || _sosAttivo) ...[
+                Text(
+                  _sosAttivo ? l10n.sosActive : l10n.speaking,
+                  style: TextStyle(
+                    fontSize: 10, 
+                    fontWeight: FontWeight.bold, 
+                    color: _sosAttivo ? Colors.red : Colors.orange
+                  )
+                ),
+                Text(
+                  _sosAttivo ? l10n.assistanceRequested : l10n.none,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Divider(height: 16),
+              ],
               
-              // CRUSCOTTO DI VIAGGIO (4 Colonne)
+              // CRUSCOTTO DI VIAGGIO (Colonne selettive per ruolo)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _colonnaCruscotto(
-                    icona: const Icon(Icons.format_list_numbered, size: 16, color: Colors.blueGrey),
-                    valore: miaPosizione > 0 ? "$miaPosizione/$nPartecipanti" : "-/$nPartecipanti",
-                    label: "POS",
-                  ),
-                  _colonnaCruscotto(
-                    icona: const Text("👑", style: TextStyle(fontSize: 14)),
-                    valore: _formattaDistanza(distLeader),
-                    label: "LEADER",
-                  ),
+                  if (!eLeader) ...[
+                    _colonnaCruscotto(
+                      icona: const Icon(Icons.format_list_numbered, size: 16, color: Colors.blueGrey),
+                      valore: miaPosizione > 0 ? "$miaPosizione/$nPartecipanti" : "-/$nPartecipanti",
+                      label: "POS",
+                    ),
+                    _colonnaCruscotto(
+                      icona: const Text("👑", style: TextStyle(fontSize: 14)),
+                      valore: _formattaDistanza(distLeader),
+                      label: "LEADER",
+                    ),
+                  ],
                   _colonnaCruscotto(
                     icona: const Text("🧹", style: TextStyle(fontSize: 14)),
                     valore: _formattaDistanza(distCoda),
@@ -401,12 +518,13 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                     icona: const Text("📐", style: TextStyle(fontSize: 14)),
                     valore: "${relativeAngle > 0 ? '+' : ''}${relativeAngle.round()}°",
                     label: "ANGLE",
-                    coloreValore: (isLeader && exceedsThreshold) ? Colors.red : null,
+                    coloreValore: (eLeader && exceedsThreshold) ? Colors.red : null,
                   ),
                 ],
               ),
               
-              if (istruzione != null && istruzione.isNotEmpty) ...[
+              // ISTRUZIONI: Nascondere al Leader (Step 8 Clean-up)
+              if (!eLeader && istruzione != null && istruzione.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,

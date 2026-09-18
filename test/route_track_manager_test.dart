@@ -10,6 +10,9 @@ void main() {
     manager = RouteTrackManager(
       sogliaDistanzaMeters: 25.0,
       sogliaTempo: const Duration(seconds: 4),
+      bufferSize: 3, // Buffer piccolo per test rapidi
+      samplingInterval: 5.0,
+      straightDistance: 100.0,
     );
   });
 
@@ -42,6 +45,14 @@ void main() {
       ));
 
       // P2: Spostamento verso EST (90 gradi)
+      // Dobbiamo aggiungere abbastanza punti per riempire il buffer (size=3)
+      manager.aggiungiPosizioneLeader(PosizioneGps(
+        latitudine: 0.0,
+        longitudine: 0.0005,
+        direzione: 0.0,
+        ultimoAggiornamento: ora.add(const Duration(seconds: 5)),
+      ));
+
       final p2 = manager.aggiungiPosizioneLeader(PosizioneGps(
         latitudine: 0.0,
         longitudine: 0.001,

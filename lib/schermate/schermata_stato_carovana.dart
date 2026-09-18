@@ -1,7 +1,6 @@
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../l10n/app_localizations.dart';
 import 'package:collection/collection.dart';
 import '../modelli/partecipante_gruppo.dart';
 import '../modelli/utente.dart';
@@ -64,7 +63,6 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
   }
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final controller = GeoRefController();
 
     return ListenableBuilder(
@@ -105,12 +103,26 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
 
             return Scaffold(
               appBar: AppBar(
-                title: Text("📍 ${l10n.caravanStatus}"),
-                centerTitle: true,
+                automaticallyImplyLeading: true,
+                title: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        "STATO CAROVANA",
+                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
+                ),
                 actions: [
                   if (debugAttivo)
                     const Padding(
-                      padding: EdgeInsets.only(right: 16.0),
+                      padding: EdgeInsets.only(right: 8.0),
                       child: Center(
                         child: Text(
                           "[CRV_STAT]",
@@ -125,32 +137,71 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                     )
                 ],
               ),
-              body: Column(
-                children: [
-                  if (controller.gpsDisabilitato)
-                    Container(
-                      width: double.infinity,
-                      color: Colors.red,
-                      padding: const EdgeInsets.all(8),
-                      child: const Text("GPS DISABILITATO!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                    ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.only(bottom: 100), // Spazio extra per il fondo
+              body: OrientationBuilder(
+                builder: (context, orientation) {
+                  final bool isLandscape = orientation == Orientation.landscape;
+
+                  if (isLandscape) {
+                    return Row(
                       children: [
-                        ..._costruisciListaMembriWidget(controller, visibilitaCompleta),
-                        if (debugAttivo) ...[
-                          const Divider(thickness: 3, color: Colors.deepPurple),
-                          _costruisciPannelloDebugInformazioni(controller),
-                          const Divider(),
-                          _costruisciPannelloSimulatoreFake(controller),
-                          const Divider(),
-                          _costruisciPannelloImpostazioniDebug(controller),
-                        ]
+                        // SINISTRA: Lista Membri
+                        Expanded(
+                          flex: 3,
+                          child: ListView(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            children: _costruisciListaMembriWidget(controller, visibilitaCompleta).toList(),
+                          ),
+                        ),
+                        // DESTRA: Pannello Debug / Simulatore
+                        if (debugAttivo)
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              color: Colors.grey.shade50,
+                              child: ListView(
+                                padding: const EdgeInsets.all(8),
+                                children: [
+                                  _costruisciPannelloDebugInformazioni(controller),
+                                  const Divider(),
+                                  _costruisciPannelloSimulatoreFake(controller),
+                                  const Divider(),
+                                  _costruisciPannelloImpostazioniDebug(controller),
+                                ],
+                              ),
+                            ),
+                          )
                       ],
-                    ),
-                  ),
-                ],
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      if (controller.gpsDisabilitato)
+                        Container(
+                          width: double.infinity,
+                          color: Colors.red,
+                          padding: const EdgeInsets.all(8),
+                          child: const Text("GPS DISABILITATO!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                        ),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.only(bottom: 100), // Spazio extra per il fondo
+                          children: [
+                            ..._costruisciListaMembriWidget(controller, visibilitaCompleta),
+                            if (debugAttivo) ...[
+                              const Divider(thickness: 3, color: Colors.deepPurple),
+                              _costruisciPannelloDebugInformazioni(controller),
+                              const Divider(),
+                              _costruisciPannelloSimulatoreFake(controller),
+                              const Divider(),
+                              _costruisciPannelloImpostazioniDebug(controller),
+                            ]
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             );
           },

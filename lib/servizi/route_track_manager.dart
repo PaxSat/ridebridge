@@ -11,30 +11,55 @@ class RouteTrackManager {
   final List<RoutePoint> _track = [];
   int _nextSequenceId = 0;
   
+  // Buffer locale per analisi geometrica (Step 8: Apex Algorithm)
+  final List<PosizioneGps> _rawBuffer = [];
+  PosizioneGps? _lastBufferedPos;
+
   // Configurazione soglie
   double sogliaDistanzaMeters;
   Duration sogliaTempo;
   double sogliaSvoltaGradi;
   double minTurnDistance;
+  
+  // Parametri Deep Tuning (Apex)
+  int bufferSize;
+  double samplingInterval;
+  double straightDistance;
 
   RouteTrackManager({
     this.sogliaDistanzaMeters = 50.0,
     this.sogliaTempo = const Duration(seconds: 15),
     this.sogliaSvoltaGradi = 20.0,
     this.minTurnDistance = 15.0,
+    this.bufferSize = 11,
+    this.samplingInterval = 5.0,
+    this.straightDistance = 1000.0,
   });
 
   /// Aggiorna le soglie operative dalla configurazione del gruppo.
-  void aggiornaSoglie(double distanza, double secondi, double gradi, double minTurnDist) {
+  void aggiornaSoglie({
+    required double distanza, 
+    required double secondi, 
+    required double gradi, 
+    required double minTurnDist,
+    int? bSize,
+    double? sInterval,
+    double? sDist,
+  }) {
     sogliaDistanzaMeters = distanza;
     sogliaTempo = Duration(seconds: secondi.round());
     sogliaSvoltaGradi = gradi;
     minTurnDistance = minTurnDist;
+    if (bSize != null) bufferSize = bSize;
+    if (sInterval != null) samplingInterval = sInterval;
+    if (sDist != null) straightDistance = sDist;
   }
 
   /// Pulisce l'intera traccia corrente.
   void reset() {
     _track.clear();
+    _rawBuffer.clear();
+    _lastBufferedPos = null;
     _nextSequenceId = 0;
   }
 
@@ -47,8 +72,7 @@ class RouteTrackManager {
 
   /// Analizza una nuova posizione del leader e decide se generare un nuovo RoutePoint.
   /// Ritorna il nuovo [RoutePoint] se creato, altrimenti null.
-  /// Logica V3: (distanza >= soglia AND tempo >= soglia) OR (svolta rilevata).
-  /// [ignoreTimeThreshold] permette di saltare il controllo temporale (es. per simulatore Fake).
+  /// Logica V3.5 (Step 8): Algoritmo Apex con sliding window.
   RoutePoint? aggiungiPosizioneLeader(PosizioneGps pos, {bool ignoreTimeThreshold = false}) {
     if (_track.isEmpty) {
       final primoPunto = RoutePoint(
@@ -63,28 +87,45 @@ class RouteTrackManager {
         triggerReason: PointTriggerReason.manual,
       );
       _track.add(primoPunto);
+      _lastBufferedPos = pos;
+      _rawBuffer.add(pos);
       return primoPunto;
     }
 
-    final ultimo = _track.last;
+    final ultimoRegistrato = _track.last;
     
-    // Calcolo distanza dall'ultimo punto registrato
-    final distanza = _evaluator.distanzaTraDuePunti(
+    // 1. GESTIONE BUFFER LOCALE (Campionamento ad alta frequenza)
+    final distDalLastBuffered = _lastBufferedPos == null ? 0.0 : _evaluator.distanzaTraDuePunti(
       pos.latitudine, pos.longitudine,
-      ultimo.latitudine, ultimo.longitudine,
+      _lastBufferedPos!.latitudine, _lastBufferedPos!.longitudine,
     );
 
-    // Calcolo tempo trascorso dall'ultimo punto
-    final tempoTrascorso = pos.ultimoAggiornamento.difference(ultimo.timestamp);
+    if (distDalLastBuffered >= samplingInterval) {
+      _rawBuffer.add(pos);
+      _lastBufferedPos = pos;
+      
+      // Manteniamo la dimensione della finestra
+      if (_rawBuffer.length > bufferSize) {
+        _rawBuffer.removeAt(0);
+      }
+    }
 
-    // Calcolo bearing reale del segmento attuale (dall'ultimo punto alla posizione corrente)
-    final bearingAttuale = _evaluator.calcolaBearing(
-      ultimo.latitudine, ultimo.longitudine,
-      pos.latitudine, pos.longitudine,
+    // Se il buffer non è ancora pieno, non possiamo fare analisi geometrica complessa,
+    // ma controlliamo comunque la soppressione rettilinea per sicurezza (fallback).
+    if (_rawBuffer.length < 3) return null;
+
+    // 2. ANALISI SVOLTA (Cumulative Deviation)
+    final primoBuffer = _rawBuffer.first;
+    final ultimoBuffer = _rawBuffer.last;
+    
+    // Calcoliamo il bearing tra inizio e fine buffer
+    final bearingFinestra = _evaluator.calcolaBearing(
+      primoBuffer.latitudine, primoBuffer.longitudine,
+      ultimoBuffer.latitudine, ultimoBuffer.longitudine,
     );
 
-    // Rilevamento Svolta: differenza tra bearing dell'ultimo segmento e quello attuale
-    double diffBearing = bearingAttuale - ultimo.bearing;
+    // Differenza rispetto all'ultimo punto registrato
+    double diffBearing = bearingFinestra - ultimoRegistrato.bearing;
     while (diffBearing < -180) {
       diffBearing += 360;
     }
@@ -92,42 +133,71 @@ class RouteTrackManager {
       diffBearing -= 360;
     }
 
-    // CONDIZIONI DI TRIGGER
-    // 1. Svolta: se l'angolo cambia sensibilmente e ci siamo mossi almeno un po'
-    bool triggerTurn = diffBearing.abs() >= sogliaSvoltaGradi && distanza >= minTurnDistance;
-    
-    // 2. Distanza e Tempo (AND logic tradizionale)
-    final sogliaDistanzaEffettiva = ignoreTimeThreshold ? 24.0 : sogliaDistanzaMeters;
-    bool triggerDistance = distanza >= sogliaDistanzaEffettiva;
-    bool triggerTime = tempoTrascorso >= sogliaTempo || ignoreTimeThreshold;
+    final distDallultimoRegistrato = _evaluator.distanzaTraDuePunti(
+      pos.latitudine, pos.longitudine,
+      ultimoRegistrato.latitudine, ultimoRegistrato.longitudine,
+    );
 
-    PointTriggerReason? reason;
-    PointTurnDirection? direction;
-    double? angle;
+    // Condizione Svolta: deviazione finestra > soglia AND ci siamo mossi dal minimo
+    bool triggerTurn = diffBearing.abs() >= sogliaSvoltaGradi && distDallultimoRegistrato >= minTurnDistance;
 
     if (triggerTurn) {
-      reason = PointTriggerReason.turn;
-      angle = diffBearing;
-      direction = diffBearing > 0 ? PointTurnDirection.right : PointTurnDirection.left;
-    } else if (triggerDistance && triggerTime) {
-      reason = PointTriggerReason.distance;
+      // IDENTIFICAZIONE APEX: cerchiamo il punto nel buffer con la massima variazione locale
+      // o semplicemente quello centrale per stabilità se il buffer è piccolo.
+      // Implementiamo una ricerca del punto che massimizza la distanza dalla corda (primo-ultimo).
+      int apexIdx = _rawBuffer.length ~/ 2;
+      double maxDistDallaCorda = -1.0;
+
+      for (int i = 1; i < _rawBuffer.length - 1; i++) {
+        final d = _evaluator.distanzaPuntoSegmento(
+          _rawBuffer[i].latitudine, _rawBuffer[i].longitudine,
+          primoBuffer.latitudine, primoBuffer.longitudine,
+          ultimoBuffer.latitudine, ultimoBuffer.longitudine,
+        );
+        if (d > maxDistDallaCorda) {
+          maxDistDallaCorda = d;
+          apexIdx = i;
+        }
+      }
+
+      final apexPos = _rawBuffer[apexIdx];
+      
+      // Creiamo il punto di svolta
+      final nuovoPunto = RoutePoint(
+        id: _uuid.v4(),
+        sequenceId: _nextSequenceId++,
+        latitudine: apexPos.latitudine,
+        longitudine: apexPos.longitudine,
+        timestamp: apexPos.ultimoAggiornamento,
+        bearing: bearingFinestra, // Usiamo il bearing della finestra per continuità
+        distanzaDalPrecedente: _evaluator.distanzaTraDuePunti(apexPos.latitudine, apexPos.longitudine, ultimoRegistrato.latitudine, ultimoRegistrato.longitudine),
+        distanzaProgressiva: ultimoRegistrato.distanzaProgressiva + _evaluator.distanzaTraDuePunti(apexPos.latitudine, apexPos.longitudine, ultimoRegistrato.latitudine, ultimoRegistrato.longitudine),
+        triggerReason: PointTriggerReason.turn,
+        turnAngle: diffBearing,
+        turnDirection: diffBearing > 0 ? PointTurnDirection.right : PointTurnDirection.left,
+      );
+
+      _track.add(nuovoPunto);
+      _rawBuffer.clear(); // Reset dopo commit svolta
+      return nuovoPunto;
     }
 
-    if (reason != null) {
+    // 3. SOPPRESSIONE RETTILINEI (Commit per distanza massima)
+    // Se non abbiamo svoltato, controlliamo se è il momento di mettere un punto "di pane"
+    if (distDallultimoRegistrato >= straightDistance) {
       final nuovoPunto = RoutePoint(
         id: _uuid.v4(),
         sequenceId: _nextSequenceId++,
         latitudine: pos.latitudine,
         longitudine: pos.longitudine,
         timestamp: pos.ultimoAggiornamento,
-        bearing: bearingAttuale,
-        distanzaDalPrecedente: distanza,
-        distanzaProgressiva: ultimo.distanzaProgressiva + distanza,
-        triggerReason: reason,
-        turnAngle: angle,
-        turnDirection: direction,
+        bearing: bearingFinestra,
+        distanzaDalPrecedente: distDallultimoRegistrato,
+        distanzaProgressiva: ultimoRegistrato.distanzaProgressiva + distDallultimoRegistrato,
+        triggerReason: PointTriggerReason.distance,
       );
       _track.add(nuovoPunto);
+      _rawBuffer.clear();
       return nuovoPunto;
     }
 

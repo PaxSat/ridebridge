@@ -12,6 +12,9 @@ class ConfigurazioneGruppo {
   final double validationRadius; // Raggio di aggancio ai punti dello Snake
   final double reliabilityTimeoutSeconds; // Tempo dopo il quale un rider è considerato offline
   final double turnInstructionDistance; // Distanza di anticipo per istruzioni svolta
+  final int bufferSize; // Numero di campioni locali per analisi curve
+  final double samplingInterval; // Metri tra campioni locali
+  final double straightDistance; // Distanza registrazione in rettilineo
 
   ConfigurazioneGruppo({
     this.turnThresholdAngle = 35.0,
@@ -26,6 +29,9 @@ class ConfigurazioneGruppo {
     this.validationRadius = 35.0,
     this.reliabilityTimeoutSeconds = 30.0,
     this.turnInstructionDistance = 300.0,
+    this.bufferSize = 11,
+    this.samplingInterval = 5.0,
+    this.straightDistance = 1000.0,
   });
 
   /// Preset per carovana turistica (Bilanciato).
@@ -68,6 +74,9 @@ class ConfigurazioneGruppo {
       validationRadius: (mappa['validationRadius'] as num?)?.toDouble() ?? 35.0,
       reliabilityTimeoutSeconds: (mappa['reliabilityTimeoutSeconds'] as num?)?.toDouble() ?? 30.0,
       turnInstructionDistance: (mappa['turnInstructionDistance'] as num?)?.toDouble() ?? 300.0,
+      bufferSize: (mappa['bufferSize'] as num?)?.toInt() ?? 11,
+      samplingInterval: (mappa['samplingInterval'] as num?)?.toDouble() ?? 5.0,
+      straightDistance: (mappa['straightDistance'] as num?)?.toDouble() ?? 1000.0,
     );
   }
 
@@ -86,6 +95,9 @@ class ConfigurazioneGruppo {
       'validationRadius': validationRadius,
       'reliabilityTimeoutSeconds': reliabilityTimeoutSeconds,
       'turnInstructionDistance': turnInstructionDistance,
+      'bufferSize': bufferSize,
+      'samplingInterval': samplingInterval,
+      'straightDistance': straightDistance,
     };
   }
 
@@ -103,6 +115,9 @@ class ConfigurazioneGruppo {
     double? validationRadius,
     double? reliabilityTimeoutSeconds,
     double? turnInstructionDistance,
+    int? bufferSize,
+    double? samplingInterval,
+    double? straightDistance,
   }) {
     return ConfigurazioneGruppo(
       turnThresholdAngle: turnThresholdAngle ?? this.turnThresholdAngle,
@@ -117,6 +132,9 @@ class ConfigurazioneGruppo {
       validationRadius: validationRadius ?? this.validationRadius,
       reliabilityTimeoutSeconds: reliabilityTimeoutSeconds ?? this.reliabilityTimeoutSeconds,
       turnInstructionDistance: turnInstructionDistance ?? this.turnInstructionDistance,
+      bufferSize: bufferSize ?? this.bufferSize,
+      samplingInterval: samplingInterval ?? this.samplingInterval,
+      straightDistance: straightDistance ?? this.straightDistance,
     );
   }
 }

@@ -30,6 +30,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
   late TextEditingController _validationRadius;
   late TextEditingController _reliabilityTimeoutSeconds;
   late TextEditingController _turnInstructionDistance;
+  late TextEditingController _bufferSize;
+  late TextEditingController _samplingInterval;
+  late TextEditingController _straightDistance;
 
   bool _inCaricamento = false;
 
@@ -47,6 +50,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _validationRadius = TextEditingController(text: c.validationRadius.toString());
     _reliabilityTimeoutSeconds = TextEditingController(text: c.reliabilityTimeoutSeconds.toString());
     _turnInstructionDistance = TextEditingController(text: c.turnInstructionDistance.toString());
+    _bufferSize = TextEditingController(text: c.bufferSize.toString());
+    _samplingInterval = TextEditingController(text: c.samplingInterval.toString());
+    _straightDistance = TextEditingController(text: c.straightDistance.toString());
   }
 
   @override
@@ -61,6 +67,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _validationRadius.dispose();
     _reliabilityTimeoutSeconds.dispose();
     _turnInstructionDistance.dispose();
+    _bufferSize.dispose();
+    _samplingInterval.dispose();
+    _straightDistance.dispose();
     super.dispose();
   }
 
@@ -81,6 +90,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
         validationRadius: double.parse(_validationRadius.text),
         reliabilityTimeoutSeconds: double.parse(_reliabilityTimeoutSeconds.text),
         turnInstructionDistance: double.parse(_turnInstructionDistance.text),
+        bufferSize: int.parse(_bufferSize.text),
+        samplingInterval: double.parse(_samplingInterval.text),
+        straightDistance: double.parse(_straightDistance.text),
       );
 
       await _servizioGruppi.salvaConfigurazione(widget.gruppo.id, nuovaConfig);
@@ -108,6 +120,9 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
       _validationRadius.text = preset.validationRadius.toString();
       _reliabilityTimeoutSeconds.text = preset.reliabilityTimeoutSeconds.toString();
       _turnInstructionDistance.text = preset.turnInstructionDistance.toString();
+      _bufferSize.text = preset.bufferSize.toString();
+      _samplingInterval.text = preset.samplingInterval.toString();
+      _straightDistance.text = preset.straightDistance.toString();
     });
   }
 
@@ -219,6 +234,21 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
                         controller: _reliabilityTimeoutSeconds,
                         etichetta: l10n.reliabilityTimeout,
                         suggerimento: "es. 30.0",
+                      ),
+                      _campoNumerico(
+                        controller: _bufferSize,
+                        etichetta: l10n.bufferSize,
+                        suggerimento: "es. 11",
+                      ),
+                      _campoNumerico(
+                        controller: _samplingInterval,
+                        etichetta: l10n.samplingInterval,
+                        suggerimento: "es. 5.0",
+                      ),
+                      _campoNumerico(
+                        controller: _straightDistance,
+                        etichetta: l10n.straightDistance,
+                        suggerimento: "es. 1000.0",
                       ),
                     ],
                   );
