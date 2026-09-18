@@ -99,6 +99,14 @@ class GeoRefController extends ChangeNotifier {
   Map<String, PosizioneGps> get ultimePosizioni => _ultimePosizioni;
   List<PartecipanteGruppo> get tuttiIMembriGruppo => _tuttiIMembriGruppo;
 
+  /// Restituisce la traccia Snake attualmente seguita dal motore (Locale per Leader, Ricevuta per Follower).
+  List<RoutePoint> get tracciaAttiva {
+    if (_mioRuolo == RuoloGruppo.leader) {
+      return _leaderEngine.ottieniRoutePoints();
+    }
+    return _snakeStateRicevuto?.punti ?? [];
+  }
+
   /// Restituisce la lista dei rider effettivamente attivi nella carovana.
   List<PartecipanteGruppo> get riderPartecipanti {
     final List<PartecipanteGruppo> attivi = [];

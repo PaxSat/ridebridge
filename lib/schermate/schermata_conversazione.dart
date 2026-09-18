@@ -128,8 +128,9 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
             if (context.mounted) Navigator.of(context).pop();
           },
           child: Scaffold(
-            appBar: isLandscape ? null : AppBar(
+            appBar: AppBar(
               automaticallyImplyLeading: false,
+              toolbarHeight: 40, // Ridotta per recuperare spazio
               title: Row(
                 children: [
                   Container(
@@ -140,27 +141,14 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                     ),
                     child: Text(
                       widget.gruppo.nome.toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
                     ),
                   ),
+                  const Spacer(),
+                  if (DebugManager().debugMode)
+                    const Text("[CONV_LIVE]", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.bold)),
                 ],
               ),
-              actions: [
-                ListenableBuilder(
-                  listenable: DebugManager(),
-                  builder: (context, _) => DebugManager().debugMode 
-                      ? const Padding(
-                          padding: EdgeInsets.only(right: 16.0),
-                          child: Center(
-                            child: Text(
-                              "[CONV_LIVE]",
-                              style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
             ),
             body: SafeArea(
               child: isLandscape 
@@ -172,30 +160,10 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                         child: ListView(
                           padding: const EdgeInsets.all(12),
                           children: [
-                            // Tag Nome Gruppo (Sostituisce AppBar in landscape)
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withValues(alpha: 0.8),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    widget.gruppo.nome.toUpperCase(),
-                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (DebugManager().debugMode)
-                                  const Text("[CONV_LIVE]", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
                             _costruisciSezioneParlante(isLandscape: true),
                             const SizedBox(height: 16),
-                            _costruisciListaMembriHeader(),
-                            _costruisciListaPartecipanti(partecipantiAttivi),
+                            _costruisciListaMembriHeader(currentUid),
+                            _costruisciListaPartecipanti(partecipantiAttivi, currentUid),
                           ],
                         ),
                       ),
@@ -215,8 +183,8 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                     children: [
                       _costruisciHeaderControlli(currentUid),
                       _costruisciSezioneParlante(isLandscape: false),
-                      _costruisciListaMembriHeader(),
-                      _costruisciListaPartecipanti(partecipantiAttivi),
+                      _costruisciListaMembriHeader(currentUid),
+                      _costruisciListaPartecipanti(partecipantiAttivi, currentUid),
                     ],
                   ),
             ),
@@ -226,16 +194,60 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     );
   }
 
-  Widget _costruisciListaMembriHeader() {
+  Widget _costruisciListaMembriHeader(String currentUid) {
     final l10n = AppLocalizations.of(context)!;
+    final bool isBoss = widget.mioRuoloIniziale == RuoloGruppo.leader || widget.mioRuoloIniziale == RuoloGruppo.scopa;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      child: Column(
         children: [
-          const Icon(Icons.people, size: 20, color: Colors.grey),
-          const SizedBox(width: 8),
-          Text(l10n.participantsLive, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+          Row(
+            children: [
+              const Icon(Icons.people, size: 16, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text(l10n.participantsLive.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+              const Spacer(),
+              if (isBoss) ...[
+                _tagComandoRapido("MUTA TUTTI", Icons.mic_off, Colors.red),
+                const SizedBox(width: 8),
+                _tagComandoRapido("ISOLA TUTTI", Icons.volume_off, Colors.blueGrey),
+              ],
+            ],
+          ),
+          const Divider(),
         ],
+      ),
+    );
+  }
+
+  Widget _tagComandoRapido(String etichetta, IconData icona, Color colore) {
+    return GestureDetector(
+      onTap: () => _mostraInSviluppo(etichetta),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          border: Border.all(color: colore.withValues(alpha: 0.5)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            Icon(icona, size: 10, color: colore),
+            const SizedBox(width: 4),
+            Text(etichetta, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: colore)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mostraInSviluppo(String funzione) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Funzione $funzione in fase di sviluppo tecnico..."),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(20),
       ),
     );
   }
@@ -413,12 +425,12 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
         }
         
         if (_geoRefController.tailState != null) {
-          final traccia = _geoRefController.leaderEngine.ottieniRoutePoints();
+          final traccia = _geoRefController.tracciaAttiva;
           final tailPoint = traccia.firstWhereOrNull((pt) => pt.sequenceId == _geoRefController.tailState!.tailIndex);
           tailProg = tailPoint?.distanzaProgressiva ?? 0.0;
         }
 
-        final tracciaSnake = _geoRefController.leaderEngine.ottieniRoutePoints();
+        final tracciaSnake = _geoRefController.tracciaAttiva;
         final nPunti = tracciaSnake.length;
         final nSvolte = tracciaSnake.where((p) => p.triggerReason == PointTriggerReason.turn).length;
         final snakeLen = tracciaSnake.isNotEmpty ? tracciaSnake.last.distanzaProgressiva : 0.0;
@@ -613,7 +625,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     );
   }
 
-  Widget _costruisciListaPartecipanti(List<PartecipanteGruppo> partecipanti) {
+  Widget _costruisciListaPartecipanti(List<PartecipanteGruppo> partecipanti, String currentUid) {
     final l10n = AppLocalizations.of(context)!;
     if (partecipanti.isEmpty) {
       return Center(child: Padding(
@@ -624,6 +636,8 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     
     return Column(
       children: partecipanti.map((p) {
+        final bool isMe = p.idUtente == currentUid;
+
         return FutureBuilder<DocumentSnapshot>(
           future: FirebaseFirestore.instance.collection('utenti').doc(p.idUtente).get(),
           builder: (context, uSnapshot) {
@@ -632,21 +646,23 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                 ? dati!['nickname'].toString()
                 : (dati?['nome']?.toString() ?? l10n.loading);
             final String moto = dati?['moto']?.toString() ?? "";
-            final String? fotoUrl = dati?['fotoUrl']?.toString();
             
             return ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
               leading: Stack(
                 children: [
                   CircleAvatar(
-                    backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty) ? NetworkImage(fotoUrl) : null,
-                    child: (fotoUrl == null || fotoUrl.isEmpty) ? const Icon(Icons.person) : null,
+                    radius: 18,
+                    backgroundColor: isMe ? Colors.orange.shade100 : Colors.grey.shade200,
+                    child: Text(_ottieniEmojiRuolo(p.ruolo), style: const TextStyle(fontSize: 14)),
                   ),
                   Positioned(
                     right: 0,
                     bottom: 0,
                     child: Container(
-                      width: 12,
-                      height: 12,
+                      width: 10,
+                      height: 10,
                       decoration: BoxDecoration(
                         color: p.online ? Colors.green : Colors.grey,
                         shape: BoxShape.circle,
@@ -656,24 +672,27 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                   ),
                 ],
               ),
-              title: Text("${_ottieniEmojiRuolo(p.ruolo)} $nome", style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(moto),
+              title: Text(nome + (isMe ? " (TU)" : ""), style: TextStyle(fontWeight: isMe ? FontWeight.w900 : FontWeight.bold, fontSize: 13)),
+              subtitle: Text(moto, style: const TextStyle(fontSize: 11)),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (p.statoAudio?.canaleSpecialeAttivo ?? false)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8.0),
-                      child: Icon(Icons.podcasts, color: Colors.blue, size: 20),
-                    ),
-                  if (p.statoAudio?.emergenzaAttiva ?? false)
-                    const Icon(Icons.warning, color: Colors.red),
+                  _iconaAudioToggle(Icons.mic, Icons.mic_off, true, "MICROFONO $nome"),
+                  const SizedBox(width: 12),
+                  _iconaAudioToggle(Icons.headset, Icons.headset_off, true, "CUFFIE $nome"),
                 ],
               ),
             );
           },
         );
       }).toList(),
+    );
+  }
+
+  Widget _iconaAudioToggle(IconData on, IconData off, bool stato, String label) {
+    return GestureDetector(
+      onTap: () => _mostraInSviluppo(label),
+      child: Icon(stato ? on : off, size: 18, color: stato ? Colors.blueGrey : Colors.red),
     );
   }
 
