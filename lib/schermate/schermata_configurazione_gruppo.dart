@@ -29,6 +29,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
   late TextEditingController _minTurnDistance;
   late TextEditingController _validationRadius;
   late TextEditingController _reliabilityTimeoutSeconds;
+  late TextEditingController _turnInstructionDistance;
 
   bool _inCaricamento = false;
 
@@ -45,6 +46,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _minTurnDistance = TextEditingController(text: c.minTurnDistance.toString());
     _validationRadius = TextEditingController(text: c.validationRadius.toString());
     _reliabilityTimeoutSeconds = TextEditingController(text: c.reliabilityTimeoutSeconds.toString());
+    _turnInstructionDistance = TextEditingController(text: c.turnInstructionDistance.toString());
   }
 
   @override
@@ -58,6 +60,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
     _minTurnDistance.dispose();
     _validationRadius.dispose();
     _reliabilityTimeoutSeconds.dispose();
+    _turnInstructionDistance.dispose();
     super.dispose();
   }
 
@@ -77,6 +80,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
         minTurnDistance: double.parse(_minTurnDistance.text),
         validationRadius: double.parse(_validationRadius.text),
         reliabilityTimeoutSeconds: double.parse(_reliabilityTimeoutSeconds.text),
+        turnInstructionDistance: double.parse(_turnInstructionDistance.text),
       );
 
       await _servizioGruppi.salvaConfigurazione(widget.gruppo.id, nuovaConfig);
@@ -103,6 +107,7 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
       _minTurnDistance.text = preset.minTurnDistance.toString();
       _validationRadius.text = preset.validationRadius.toString();
       _reliabilityTimeoutSeconds.text = preset.reliabilityTimeoutSeconds.toString();
+      _turnInstructionDistance.text = preset.turnInstructionDistance.toString();
     });
   }
 
@@ -184,6 +189,11 @@ class _SchermataConfigurazioneGruppoState extends State<SchermataConfigurazioneG
                 controller: _offRouteThreshold,
                 etichetta: l10n.offRouteThreshold,
                 suggerimento: "es. 150.0",
+              ),
+              _campoNumerico(
+                controller: _turnInstructionDistance,
+                etichetta: l10n.turnInstructionDistance,
+                suggerimento: "es. 300.0",
               ),
 
               // SEZIONE: DEEP TUNING (SOLO DEBUG)

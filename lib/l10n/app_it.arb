@@ -152,6 +152,7 @@
     }
   },
   "rejoinLeader": "Naviga verso il Leader",
+  "turnInstructionDistance": "Anticipo Istruzioni Svolta (m)",
   "minTurnDistance": "Spostamento Minimo Svolta (m)",
   "validationRadius": "Raggio Validazione Punto (m)",
   "reliabilityTimeout": "Timeout Affidabilità (s)",

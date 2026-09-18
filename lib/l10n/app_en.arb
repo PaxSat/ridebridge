@@ -152,6 +152,7 @@
     }
   },
   "rejoinLeader": "Navigate to Leader",
+  "turnInstructionDistance": "Turn Instruction Anticipation (m)",
   "minTurnDistance": "Min Turn Distance (m)",
   "validationRadius": "Point Validation Radius (m)",
   "reliabilityTimeout": "Reliability Timeout (s)",

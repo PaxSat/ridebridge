@@ -367,6 +367,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get rejoinLeader => 'Naviga verso il Leader';
 
   @override
+  String get turnInstructionDistance => 'Anticipo Istruzioni Svolta (m)';
+
+  @override
   String get minTurnDistance => 'Spostamento Minimo Svolta (m)';
 
   @override

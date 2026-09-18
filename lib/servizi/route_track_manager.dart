@@ -84,12 +84,17 @@ class RouteTrackManager {
     );
 
     // Rilevamento Svolta: differenza tra bearing dell'ultimo segmento e quello attuale
-    double diffBearing = (bearingAttuale - ultimo.bearing).abs();
-    if (diffBearing > 180) diffBearing = 360 - diffBearing;
+    double diffBearing = bearingAttuale - ultimo.bearing;
+    while (diffBearing < -180) {
+      diffBearing += 360;
+    }
+    while (diffBearing > 180) {
+      diffBearing -= 360;
+    }
 
     // CONDIZIONI DI TRIGGER
     // 1. Svolta: se l'angolo cambia sensibilmente e ci siamo mossi almeno un po'
-    bool triggerTurn = diffBearing >= sogliaSvoltaGradi && distanza >= minTurnDistance;
+    bool triggerTurn = diffBearing.abs() >= sogliaSvoltaGradi && distanza >= minTurnDistance;
     
     // 2. Distanza e Tempo (AND logic tradizionale)
     final sogliaDistanzaEffettiva = ignoreTimeThreshold ? 24.0 : sogliaDistanzaMeters;
@@ -97,10 +102,14 @@ class RouteTrackManager {
     bool triggerTime = tempoTrascorso >= sogliaTempo || ignoreTimeThreshold;
 
     PointTriggerReason? reason;
+    PointTurnDirection? direction;
+    double? angle;
+
     if (triggerTurn) {
       reason = PointTriggerReason.turn;
+      angle = diffBearing;
+      direction = diffBearing > 0 ? PointTurnDirection.right : PointTurnDirection.left;
     } else if (triggerDistance && triggerTime) {
-      // Se è scattato per distanza+tempo, diamo priorità alla distanza come etichetta
       reason = PointTriggerReason.distance;
     }
 
@@ -115,6 +124,8 @@ class RouteTrackManager {
         distanzaDalPrecedente: distanza,
         distanzaProgressiva: ultimo.distanzaProgressiva + distanza,
         triggerReason: reason,
+        turnAngle: angle,
+        turnDirection: direction,
       );
       _track.add(nuovoPunto);
       return nuovoPunto;

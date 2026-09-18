@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
@@ -109,7 +110,7 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                 actions: [
                   if (debugAttivo)
                     const Padding(
-                      padding: EdgeInsets.only(right: 8.0),
+                      padding: EdgeInsets.only(right: 16.0),
                       child: Center(
                         child: Text(
                           "[CRV_STAT]",
@@ -236,7 +237,24 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text("Coordinate Iniziali Fake (Brescia default):", style: TextStyle(fontSize: 12)),
+          Row(
+            children: [
+              const Text("Coordinate Iniziali Fake (", style: TextStyle(fontSize: 12)),
+              GestureDetector(
+                onTap: () {
+                  final dm = DebugManager();
+                  _latController.text = "45.5422";
+                  _lonController.text = "10.2118";
+                  dm.impostaCoordinateFake(45.5422, 10.2118);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Reset su Brescia!"), duration: Duration(seconds: 1)),
+                  );
+                },
+                child: const Text("Brescia", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue, decoration: TextDecoration.underline)),
+              ),
+              const Text(" default):", style: TextStyle(fontSize: 12)),
+            ],
+          ),
           Row(
             children: [
               Expanded(
@@ -386,27 +404,71 @@ class _SchermataStatoCarovanaState extends State<SchermataStatoCarovana> {
                   const Text("progresso", style: TextStyle(fontSize: 10, color: Colors.grey)),
                 ],
               ),
-              children: [
+      children: [
                 if (p != null)
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        _rigaDettaglio("Punto percorso (ID)", "${p.lastValidatedIndex}"),
-                        _rigaDettaglio("Prossimo obiettivo", "${p.nextTargetIndex}"),
-                        _rigaDettaglio("Distanza dal prossimo punto", _formattaDistanza(distProssimoPunto)),
-                        _rigaDettaglio("Distanza dal Leader", _formattaDistanza(leaderProg - p.routeProgress)),
+                        if (widget.mioRuolo == RuoloGruppo.leader && id == widget.mioUid) ...[
+                          // VISUALIZZAZIONE SPECIFICA PER IL LEADER (MOTIVI CREAZIONE)
+                          _rigaDettaglio("Punto Corrente (ID)", "${p.lastValidatedIndex}"),
+                          if (lastPoint != null) ...[
+                            _rigaDettaglio("Motivo Creazione", lastPoint.triggerReason.name.toUpperCase()),
+                            if (lastPoint.turnAngle != null)
+                              _rigaDettaglio("Angolo Svolta", "${lastPoint.turnAngle! > 0 ? '+' : ''}${lastPoint.turnAngle!.round()}° (${lastPoint.turnDirection?.name.toUpperCase()})"),
+                          ],
+                        ] else ...[
+                          // VISUALIZZAZIONE STANDARD PER GLI ALTRI
+                          _rigaDettaglio("Punto percorso (ID)", "${p.lastValidatedIndex}"),
+                          _rigaDettaglio("Prossimo obiettivo", "${p.nextTargetIndex}"),
+                          _rigaDettaglio("Distanza dal prossimo punto", _formattaDistanza(distProssimoPunto)),
+                          _rigaDettaglio("Distanza dal Leader", _formattaDistanza(leaderProg - p.routeProgress)),
+                        ],
                         
-                        // NUOVO: Visualizzazione Coordinate
+                        // NUOVO: Visualizzazione Coordinate con tasto VAI
                         const Divider(height: 24),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Lat:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
-                            Text(p.ultimaPosizioneGps.latitudine.toStringAsFixed(6), style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-                            const SizedBox(width: 16),
-                            const Text("Lon:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
-                            Text(p.ultimaPosizioneGps.longitudine.toStringAsFixed(6), style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Text("Lat:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                      const SizedBox(width: 4),
+                                      Text(p.ultimaPosizioneGps.latitudine.toStringAsFixed(6), style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Text("Lon:", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                      const SizedBox(width: 4),
+                                      Text(p.ultimaPosizioneGps.longitudine.toStringAsFixed(6), style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final lat = p.ultimaPosizioneGps.latitudine;
+                                final lon = p.ultimaPosizioneGps.longitudine;
+                                final uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              icon: const Icon(Icons.navigation, size: 16),
+                              label: const Text("VAI", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                backgroundColor: Colors.blue.shade50,
+                                foregroundColor: Colors.blue.shade700,
+                              ),
+                            ),
                           ],
                         ),
 

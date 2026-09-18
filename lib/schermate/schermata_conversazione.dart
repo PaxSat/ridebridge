@@ -8,6 +8,7 @@ import '../modelli/partecipante_gruppo.dart';
 import '../servizi/servizio_gruppi.dart';
 import '../servizi/georef_controller.dart';
 import '../servizi/debug_manager.dart';
+import '../modelli/route_point.dart';
 import 'schermata_stato_carovana.dart';
 
 /// Schermata principale dell'interfono live (Livello GRUPPO).
@@ -95,33 +96,21 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     final l10n = AppLocalizations.of(context)!;
     final String currentUid = _uid ?? "";
 
-    return StreamBuilder<List<PartecipanteGruppo>>(
-      stream: FirebaseFirestore.instance
-          .collection('gruppi')
-          .doc(widget.gruppo.id)
-          .collection('partecipanti')
-          // online o partecipando attivi
-          .snapshots()
-          .map((snapshot) => snapshot.docs
-              .map((doc) => PartecipanteGruppo.daMappa(doc.data(), doc.id))
-              .toList()),
-      builder: (context, snapshot) {
-        var tuttiPartecipanti = snapshot.data ?? [];
+    return ListenableBuilder(
+      listenable: _geoRefController,
+      builder: (context, _) {
+        final partecipantiAttivi = _geoRefController.riderPartecipanti;
         
-        // In Conversazione (PARTECIPA) vediamo solo chi è effettivamente attivo nella sessione
-        var partecipantiAttivi = tuttiPartecipanti.where((p) => p.partecipando == true).toList();
-        
-        if (currentUid.isNotEmpty && tuttiPartecipanti.isNotEmpty) {
+        if (currentUid.isNotEmpty && partecipantiAttivi.isNotEmpty) {
           try {
-            final me = tuttiPartecipanti.firstWhere((p) => p.idUtente == currentUid);
-            _mioStatoLocale = me;
-            _sosAttivo = me.statoAudio?.emergenzaAttiva ?? false;
-            _canaleSpecialeAttivo = me.statoAudio?.canaleSpecialeAttivo ?? false;
+            final me = partecipantiAttivi.firstWhereOrNull((p) => p.idUtente == currentUid);
+            if (me != null) {
+              _mioStatoLocale = me;
+              _sosAttivo = me.statoAudio?.emergenzaAttiva ?? false;
+              _canaleSpecialeAttivo = me.statoAudio?.canaleSpecialeAttivo ?? false;
+            }
           } catch (_) {}
         }
-
-        // Ordinamento per ruolo nella conversazione
-        partecipantiAttivi.sort((a, b) => a.ruolo.index.compareTo(b.ruolo.index));
 
         return PopScope(
           canPop: false,
@@ -317,18 +306,41 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           tailProg = tailPoint?.distanzaProgressiva ?? 0.0;
         }
 
+        final tracciaSnake = _geoRefController.leaderEngine.ottieniRoutePoints();
+        final nPunti = tracciaSnake.length;
+        final nSvolte = tracciaSnake.where((p) => p.triggerReason == PointTriggerReason.turn).length;
+        final snakeLen = tracciaSnake.isNotEmpty ? tracciaSnake.last.distanzaProgressiva : 0.0;
+
         final distLeader = (leaderProg - (mioProgresso?.routeProgress ?? 0.0)).abs();
         final distCoda = ((mioProgresso?.routeProgress ?? 0.0) - tailProg).abs();
         
         final istruzione = _geoRefController.messaggiNavigazione[currentUid];
 
-        // Angolo di sterzata
+        // Angolo di sterzata relativo
         final posGps = _geoRefController.ultimePosizioni[currentUid];
-        final bearing = posGps?.direzione.round() ?? 0;
+        final currentBearing = posGps?.direzione ?? 0.0;
+        
+        // Calcoliamo l'angolo relativo rispetto all'ultimo punto validato (o ultimo punto traccia se Leader)
+        double relativeAngle = 0.0;
+        final refPoint = tracciaSnake.firstWhereOrNull((p) => p.sequenceId == mioProgresso?.lastValidatedIndex) 
+                      ?? tracciaSnake.lastOrNull;
+        
+        if (refPoint != null) {
+          relativeAngle = currentBearing - refPoint.bearing;
+          while (relativeAngle < -180) {
+          relativeAngle += 360;
+        }
+        while (relativeAngle > 180) {
+          relativeAngle -= 360;
+        }
+        }
+
+        final bool exceedsThreshold = relativeAngle.abs() >= widget.gruppo.configurazione.turnThresholdAngle;
+        final bool isLeader = widget.mioRuoloIniziale == RuoloGruppo.leader;
 
         return Container(
           margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           width: double.infinity,
           decoration: BoxDecoration(
             color: _sosAttivo ? Colors.red.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
@@ -337,20 +349,34 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           ),
           child: Column(
             children: [
+              // RIGA 1: RIEPILOGO GENERALE
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _datoSintetico(Icons.people, "$nPartecipanti"),
+                  _separatoreSintetico(),
+                  _datoSintetico(Icons.straighten, _formattaDistanza(snakeLen)),
+                  _separatoreSintetico(),
+                  _datoSintetico(Icons.adjust, "$nPunti"),
+                  _separatoreSintetico(),
+                  _datoSintetico(Icons.turn_right, "$nSvolte"),
+                ],
+              ),
+              const Divider(height: 20),
+              
               Text(
                 _sosAttivo ? l10n.sosActive : l10n.speaking,
                 style: TextStyle(
-                  fontSize: 12, 
+                  fontSize: 10, 
                   fontWeight: FontWeight.bold, 
                   color: _sosAttivo ? Colors.red : Colors.orange
                 )
               ),
-              const SizedBox(height: 8),
               Text(
                 _sosAttivo ? l10n.assistanceRequested : l10n.none,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const Divider(height: 24),
+              const Divider(height: 20),
               
               // CRUSCOTTO DI VIAGGIO (4 Colonne)
               Row(
@@ -373,8 +399,9 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
                   ),
                   _colonnaCruscotto(
                     icona: const Text("📐", style: TextStyle(fontSize: 14)),
-                    valore: "$bearing°",
+                    valore: "${relativeAngle > 0 ? '+' : ''}${relativeAngle.round()}°",
                     label: "ANGLE",
+                    coloreValore: (isLeader && exceedsThreshold) ? Colors.red : null,
                   ),
                 ],
               ),
@@ -382,21 +409,23 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
               if (istruzione != null && istruzione.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 2),
+                    boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.1), blurRadius: 4)],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.navigation, size: 16, color: Colors.blue),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.navigation, size: 24, color: Colors.blue),
+                      const SizedBox(width: 12),
                       Flexible(
                         child: Text(
-                          istruzione,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          istruzione.toUpperCase(),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.blue),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -408,6 +437,26 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
           ),
         );
       }
+    );
+  }
+
+  Widget _datoSintetico(IconData icona, String testo) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icona, size: 12, color: Colors.grey),
+        const SizedBox(width: 4),
+        Text(testo, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+      ],
+    );
+  }
+
+  Widget _separatoreSintetico() {
+    return Container(
+      height: 10,
+      width: 1,
+      color: Colors.grey.withValues(alpha: 0.3),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
     );
   }
 
@@ -423,6 +472,7 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
     required Widget icona,
     required String valore,
     required String label,
+    Color? coloreValore,
   }) {
     return Expanded(
       child: Column(
@@ -430,7 +480,15 @@ class _SchermataConversazioneState extends State<SchermataConversazione> {
         children: [
           icona,
           const SizedBox(height: 4),
-          Text(valore, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+          Text(
+            valore, 
+            style: TextStyle(
+              fontSize: 13, 
+              fontWeight: FontWeight.bold, 
+              color: coloreValore
+            ), 
+            overflow: TextOverflow.ellipsis
+          ),
           Text(label, style: const TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
         ],
       ),

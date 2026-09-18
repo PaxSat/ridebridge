@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../modelli/posizione_gps.dart';
 import '../modelli/partecipante_gruppo.dart';
@@ -102,33 +103,30 @@ class GeoRefController extends ChangeNotifier {
   List<PartecipanteGruppo> get riderPartecipanti {
     final List<PartecipanteGruppo> attivi = [];
     
-    // Iniziamo controllando se ci siamo noi (Leader locale o Rider attivo)
+    // Iniziamo controllando se ci siamo noi (Leader o Rider attivo)
+    // Se l'engine è attivo, io sono TASSATIVAMENTE un partecipante attivo per me stesso.
     if (_mioUid != null && _isAttivo) {
       final me = _snapshotRidersCompleti[_mioUid!];
-      if (me != null) {
-        bool isLeader = me.ruolo == RuoloGruppo.leader;
-        if (DebugManager().gpsFake) {
-          if (_uidsVirtualiEntrati.contains(_mioUid!) || isLeader) {
-            attivi.add(me);
-          }
-        } else {
-          if (me.partecipando || isLeader) {
-            attivi.add(me);
-          }
-        }
-      }
+      attivi.add(me ?? PartecipanteGruppo(
+        idUtente: _mioUid!,
+        ruolo: _mioRuolo ?? RuoloGruppo.partecipante,
+        partecipando: true,
+        online: true,
+      ));
     }
 
     // Aggiungiamo gli altri rider dalla cache
     for (var p in _snapshotRidersCompleti.values) {
-      if (p.idUtente == _mioUid) continue; // Già gestito sopra
+      if (p.idUtente == _mioUid) continue; // Già aggiunto sopra
 
-      bool isLeader = p.ruolo == RuoloGruppo.leader;
+      // In modalità FAKE, la partecipazione è determinata dal set _uidsVirtualiEntrati.
+      // Il Leader altrui è sempre attivo se presente in cache.
       if (DebugManager().gpsFake) {
-        if (_uidsVirtualiEntrati.contains(p.idUtente) || isLeader) {
+        if (_uidsVirtualiEntrati.contains(p.idUtente) || p.ruolo == RuoloGruppo.leader) {
           attivi.add(p);
         }
       } else {
+        // In modalità REALE, ci fidiamo del flag 'partecipando' di Firestore
         if (p.partecipando) {
           attivi.add(p);
         }
@@ -221,9 +219,8 @@ class GeoRefController extends ChangeNotifier {
   Future<void> stop() async {
     if (!_isAttivo) return;
 
-    if (_idGruppoCorrente != null && _mioUid != null) {
-      await _transport.aggiornaPartecipazione(_idGruppoCorrente!, _mioUid!, false);
-    }
+    final idGruppo = _idGruppoCorrente;
+    final uid = _mioUid;
 
     _isAttivo = false;
     _subscription?.cancel();
@@ -232,8 +229,21 @@ class GeoRefController extends ChangeNotifier {
     _gpsStatusSubscription?.cancel();
     _fakeGps.fermaSimulazione();
 
+    if (idGruppo != null && uid != null) {
+      // 1. Notifica Firestore dell'uscita immediata
+      await _transport.aggiornaPartecipazione(idGruppo, uid, false);
+      // 2. Rimuove i dati di streaming per sparire subito dalle mappe altrui
+      await FirebaseFirestore.instance
+          .collection('tour_live_streams')
+          .doc(idGruppo)
+          .collection('riders')
+          .doc(uid)
+          .delete();
+    }
+
     _leaderEngine.reset();
     _followerEngine.reset();
+    // ... rest of reset ...
     _ultimoSnakeStateInviato = null;
     _ultimiAvanzamentiInviati = null;
     _snakeStateRicevuto = null;
@@ -538,10 +548,12 @@ class GeoRefController extends ChangeNotifier {
         );
         _avvisiAttivi[uid] = _formation.generaAvviso(uid, p.engineState, stato);
         
-        final targetPoint = traccia.firstWhereOrNull((pt) => pt.sequenceId == p.nextTargetIndex);
-
-        _messaggiNavigazione[uid] = _waypointManager.ottieniIstruzioneNavigazione(
-          pos, targetPoint, _config.triggerDistanceMeters, p.engineState
+        _messaggiNavigazione[uid] = _waypointManager.ottieniIstruzioneSmart(
+          posAttuale: pos,
+          traccia: traccia,
+          lastValidatedIdx: p.lastValidatedIndex,
+          config: _config,
+          engineState: p.engineState,
         );
       }
     });

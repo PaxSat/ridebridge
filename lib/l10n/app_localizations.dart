@@ -764,6 +764,12 @@ abstract class AppLocalizations {
   /// **'Naviga verso il Leader'**
   String get rejoinLeader;
 
+  /// No description provided for @turnInstructionDistance.
+  ///
+  /// In it, this message translates to:
+  /// **'Anticipo Istruzioni Svolta (m)'**
+  String get turnInstructionDistance;
+
   /// No description provided for @minTurnDistance.
   ///
   /// In it, this message translates to:

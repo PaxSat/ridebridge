@@ -11,6 +11,7 @@ class ConfigurazioneGruppo {
   final double minTurnDistance; // Distanza minima per triggerare una svolta
   final double validationRadius; // Raggio di aggancio ai punti dello Snake
   final double reliabilityTimeoutSeconds; // Tempo dopo il quale un rider è considerato offline
+  final double turnInstructionDistance; // Distanza di anticipo per istruzioni svolta
 
   ConfigurazioneGruppo({
     this.turnThresholdAngle = 35.0,
@@ -24,6 +25,7 @@ class ConfigurazioneGruppo {
     this.minTurnDistance = 15.0,
     this.validationRadius = 35.0,
     this.reliabilityTimeoutSeconds = 30.0,
+    this.turnInstructionDistance = 300.0,
   });
 
   /// Preset per carovana turistica (Bilanciato).
@@ -65,6 +67,7 @@ class ConfigurazioneGruppo {
       minTurnDistance: (mappa['minTurnDistance'] as num?)?.toDouble() ?? 15.0,
       validationRadius: (mappa['validationRadius'] as num?)?.toDouble() ?? 35.0,
       reliabilityTimeoutSeconds: (mappa['reliabilityTimeoutSeconds'] as num?)?.toDouble() ?? 30.0,
+      turnInstructionDistance: (mappa['turnInstructionDistance'] as num?)?.toDouble() ?? 300.0,
     );
   }
 
@@ -82,6 +85,7 @@ class ConfigurazioneGruppo {
       'minTurnDistance': minTurnDistance,
       'validationRadius': validationRadius,
       'reliabilityTimeoutSeconds': reliabilityTimeoutSeconds,
+      'turnInstructionDistance': turnInstructionDistance,
     };
   }
 
@@ -98,6 +102,7 @@ class ConfigurazioneGruppo {
     double? minTurnDistance,
     double? validationRadius,
     double? reliabilityTimeoutSeconds,
+    double? turnInstructionDistance,
   }) {
     return ConfigurazioneGruppo(
       turnThresholdAngle: turnThresholdAngle ?? this.turnThresholdAngle,
@@ -111,6 +116,7 @@ class ConfigurazioneGruppo {
       minTurnDistance: minTurnDistance ?? this.minTurnDistance,
       validationRadius: validationRadius ?? this.validationRadius,
       reliabilityTimeoutSeconds: reliabilityTimeoutSeconds ?? this.reliabilityTimeoutSeconds,
+      turnInstructionDistance: turnInstructionDistance ?? this.turnInstructionDistance,
     );
   }
 }

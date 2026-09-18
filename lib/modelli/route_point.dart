@@ -8,6 +8,12 @@ enum PointTriggerReason {
   unknown,
 }
 
+/// Direzione della svolta relativa al percorso.
+enum PointTurnDirection {
+  left,
+  right,
+}
+
 /// Rappresenta un punto immutabile della traccia generata dal Leader.
 class RoutePoint {
   final String id; // UUID tecnico
@@ -19,6 +25,8 @@ class RoutePoint {
   final double distanzaDalPrecedente;
   final double distanzaProgressiva;
   final PointTriggerReason triggerReason;
+  final double? turnAngle; // Differenza relativa in gradi (+ destra, - sinistra)
+  final PointTurnDirection? turnDirection; // null se non è una svolta
 
   RoutePoint({
     required this.id,
@@ -30,6 +38,8 @@ class RoutePoint {
     this.distanzaDalPrecedente = 0.0,
     this.distanzaProgressiva = 0.0,
     this.triggerReason = PointTriggerReason.unknown,
+    this.turnAngle,
+    this.turnDirection,
   });
 
   /// Crea un oggetto [RoutePoint] da una mappa (es. Firestore).
@@ -57,6 +67,10 @@ class RoutePoint {
         (e) => e.name == mappa['triggerReason'],
         orElse: () => PointTriggerReason.unknown,
       ),
+      turnAngle: (mappa['turnAngle'] as num?)?.toDouble(),
+      turnDirection: mappa['turnDirection'] != null
+          ? PointTurnDirection.values.firstWhere((e) => e.name == mappa['turnDirection'])
+          : null,
     );
   }
 
@@ -71,6 +85,8 @@ class RoutePoint {
       'distanzaDalPrecedente': distanzaDalPrecedente,
       'distanzaProgressiva': distanzaProgressiva,
       'triggerReason': triggerReason.name,
+      'turnAngle': turnAngle,
+      'turnDirection': turnDirection?.name,
     };
   }
 
@@ -85,6 +101,8 @@ class RoutePoint {
     double? distanzaDalPrecedente,
     double? distanzaProgressiva,
     PointTriggerReason? triggerReason,
+    double? turnAngle,
+    PointTurnDirection? turnDirection,
   }) {
     return RoutePoint(
       id: id ?? this.id,
@@ -96,6 +114,8 @@ class RoutePoint {
       distanzaDalPrecedente: distanzaDalPrecedente ?? this.distanzaDalPrecedente,
       distanzaProgressiva: distanzaProgressiva ?? this.distanzaProgressiva,
       triggerReason: triggerReason ?? this.triggerReason,
+      turnAngle: turnAngle ?? this.turnAngle,
+      turnDirection: turnDirection ?? this.turnDirection,
     );
   }
 }

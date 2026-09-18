@@ -28,6 +28,7 @@ class SchermataDettaglioGruppo extends StatefulWidget {
 class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
   final ServizioGruppi _servizioGruppi = ServizioGruppi();
   final ServizioDatabase _servizioDatabase = ServizioDatabase();
+  final GeoRefController _geoRefController = GeoRefController();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   PartecipanteGruppo? _mioRuolo;
@@ -212,52 +213,17 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
           ),
         ],
       ),
-      body: Column(
+      body: ListView(
         children: [
-          // Header Info
+          // SEZIONE OPERATIVA (Top Priority)
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.1),
-              border: const Border(bottom: BorderSide(color: Colors.orange, width: 0.5)),
+              color: Colors.orange.shade50,
+              border: Border(bottom: BorderSide(color: Colors.orange.shade200)),
             ),
             child: Column(
               children: [
-                Text(l10n.accessCode, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                const SizedBox(height: 8),
-                SelectableText(
-                  widget.gruppo.codiceAccesso,
-                  style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: 5, color: Colors.orange),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton.icon(
-                      onPressed: _condividiCodice,
-                      icon: const Icon(Icons.share, size: 20),
-                      label: Text(l10n.share),
-                      style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
-                    ),
-                    const SizedBox(width: 16),
-                    TextButton.icon(
-                      onPressed: _copiaCodice,
-                      icon: const Icon(Icons.copy, size: 20),
-                      label: Text(l10n.copy),
-                      style: TextButton.styleFrom(foregroundColor: Colors.orange.shade800),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                Text(l10n.yourRole, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                const SizedBox(height: 8),
-                Text(
-                  _formattaRuolo(mioRuolo.ruolo),
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 24),
                 StreamBuilder<DocumentSnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('gruppi')
@@ -270,6 +236,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                     
                     return SizedBox(
                       width: double.infinity,
+                      height: 80, // Pulsante extra-large per guanti
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           final bool eLeader = mioRuolo.ruolo == RuoloGruppo.leader;
@@ -300,9 +267,7 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                             }
                           }
 
-                          // AVVIO FORZATO: Avviamo sempre l'engine locale quando si preme PARTECIPA
-                          // per garantire che il cruscotto sia attivo (Fix -/0)
-                          await GeoRefController().start(
+                          await _geoRefController.start(
                             idGruppo: widget.gruppo.id,
                             mioUid: _uid!,
                             mioRuolo: mioRuolo.ruolo,
@@ -321,185 +286,208 @@ class _SchermataDettaglioGruppoState extends State<SchermataDettaglioGruppo> {
                             );
                           }
                         },
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text("PARTECIPA"),
+                        icon: const Icon(Icons.play_arrow, size: 32),
+                        label: const Text(
+                          "PARTECIPA LIVE", 
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 4,
                         ),
                       ),
                     );
                   },
                 ),
-              ],
-            ),
-          ),
-
-          // Lista Membri del Gruppo
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
-              children: [
-                const Icon(Icons.people_outline, color: Colors.orange),
-                const SizedBox(width: 8),
-                Text("MEMBRI DEL GRUPPO", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: StreamBuilder<List<PartecipanteGruppo>>(
-              stream: _servizioGruppi.streamPartecipanti(widget.gruppo.id),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                
-                final listaFinale = snapshot.data ?? [];
-                
-                // Ordiniamo per ruolo
-                listaFinale.sort((a, b) => a.ruolo.index.compareTo(b.ruolo.index));
-
-                if (listaFinale.isEmpty) {
-                  return Center(child: Text(l10n.noParticipants));
-                }
-
-                return ListView.separated(
-                  itemCount: listaFinale.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final p = listaFinale[index];
-
-                        return FutureBuilder<Utente?>(
-                          future: _servizioDatabase.leggiUtente(p.idUtente),
-                          builder: (context, uSnapshot) {
-                            final utente = uSnapshot.data;
-                            final nomePartecipante = utente?.nickname?.isNotEmpty == true
-                                ? utente!.nickname!
-                                : (utente?.nome ?? (uSnapshot.connectionState == ConnectionState.waiting ? l10n.loading : "Utente ${p.idUtente.substring(0, 4)}"));
-                            
-                            return ListTile(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => SchermataDettaglioMembro(
-                                      idGruppo: widget.gruppo.id,
-                                      idUtente: p.idUtente,
-                                    ),
-                                  ),
-                                );
-                              },
-                              leading: Stack(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: Colors.grey.shade200,
-                                    backgroundImage: (utente?.fotoUrl != null && utente!.fotoUrl!.isNotEmpty) ? NetworkImage(utente.fotoUrl!) : null,
-                                    child: (utente?.fotoUrl == null || utente!.fotoUrl!.isEmpty) ? const Icon(Icons.person, color: Colors.grey) : null,
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: p.online ? Colors.green : Colors.grey,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 2),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              title: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante",
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (p.statoAudio?.staParlando == true)
-                                    const Padding(
-                                      padding: EdgeInsets.only(left: 8.0),
-                                      child: Icon(Icons.mic, color: Colors.green, size: 16),
-                                    ),
-                                ],
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    utente?.moto?.isNotEmpty == true
-                                        ? utente!.moto!
-                                        : _formattaRuolo(p.ruolo),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Row(
-                                    children: [
-                                      if (!p.microfonoConsentito)
-                                        const Padding(
-                                          padding: EdgeInsets.only(right: 8.0),
-                                          child: Icon(Icons.mic_off, color: Colors.red, size: 14),
-                                        ),
-                                      if (!p.audioConsentito)
-                                        const Padding(
-                                          padding: EdgeInsets.only(right: 8.0),
-                                          child: Icon(Icons.volume_off, color: Colors.red, size: 14),
-                                        ),
-                                      if (p.statoAudio?.emergenzaAttiva == true)
-                                        Text(
-                                          "🚨 ${l10n.sos}",
-                                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-
-          // Azioni di Fondo
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: eLeader
-                ? SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _eliminaGruppo,
-                      icon: const Icon(Icons.delete_forever),
-                      label: Text(l10n.deleteGroup),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.person, size: 14, color: Colors.orange),
+                          const SizedBox(width: 6),
+                          Text(
+                            _formattaRuolo(mioRuolo.ruolo).toUpperCase(),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                          ),
+                        ],
                       ),
                     ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Sezione Codice (Più compatta)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l10n.accessCode.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        SelectableText(
+                          widget.gruppo.codiceAccesso,
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.orange),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: _condividiCodice,
+                          icon: const Icon(Icons.share, color: Colors.orange),
+                          tooltip: l10n.share,
+                        ),
+                        IconButton(
+                          onPressed: _copiaCodice,
+                          icon: const Icon(Icons.copy, color: Colors.orange),
+                          tooltip: l10n.copy,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // Lista Membri
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.people_outline, color: Colors.grey, size: 20),
+                const SizedBox(width: 8),
+                Text("MEMBRI DEL GRUPPO", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+              ],
+            ),
+          ),
+
+          StreamBuilder<List<PartecipanteGruppo>>(
+            stream: _servizioGruppi.streamPartecipanti(widget.gruppo.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
+              }
+              
+              final listaFinale = snapshot.data ?? [];
+              listaFinale.sort((a, b) => a.ruolo.index.compareTo(b.ruolo.index));
+
+              if (listaFinale.isEmpty) {
+                return Center(child: Text(l10n.noParticipants));
+              }
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: listaFinale.length,
+                separatorBuilder: (_, _) => const Divider(height: 1, indent: 70),
+                itemBuilder: (context, index) {
+                  final p = listaFinale[index];
+                  return FutureBuilder<Utente?>(
+                    future: _servizioDatabase.leggiUtente(p.idUtente),
+                    builder: (context, uSnapshot) {
+                      final utente = uSnapshot.data;
+                      final nomePartecipante = utente?.nickname?.isNotEmpty == true
+                          ? utente!.nickname!
+                          : (utente?.nome ?? (uSnapshot.connectionState == ConnectionState.waiting ? l10n.loading : "Rider ${p.idUtente.substring(0, 4)}"));
+                      
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SchermataDettaglioMembro(
+                                idGruppo: widget.gruppo.id,
+                                idUtente: p.idUtente,
+                              ),
+                            ),
+                          );
+                        },
+                        leading: Stack(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Colors.grey.shade200,
+                              backgroundImage: (utente?.fotoUrl != null && utente!.fotoUrl!.isNotEmpty) ? NetworkImage(utente.fotoUrl!) : null,
+                              child: (utente?.fotoUrl == null || utente!.fotoUrl!.isEmpty) ? const Icon(Icons.person, color: Colors.grey) : null,
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: p.online ? Colors.green : Colors.grey,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        title: Text(
+                          "${_ottieniEmojiRuolo(p.ruolo)} $nomePartecipante".toUpperCase(),
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                        ),
+                        subtitle: Text(
+                          utente?.moto?.isNotEmpty == true ? utente!.moto! : _formattaRuolo(p.ruolo),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+
+          const SizedBox(height: 40),
+
+          // Azioni Secondarie
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: eLeader
+                ? OutlinedButton.icon(
+                    onPressed: _eliminaGruppo,
+                    icon: const Icon(Icons.delete_forever),
+                    label: Text(l10n.deleteGroup),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   )
-                : SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _esciDalGruppo,
-                      icon: const Icon(Icons.exit_to_app),
-                      label: Text(l10n.exitGroup),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                : OutlinedButton.icon(
+                    onPressed: _esciDalGruppo,
+                    icon: const Icon(Icons.exit_to_app),
+                    label: Text(l10n.exitGroup),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
           ),
